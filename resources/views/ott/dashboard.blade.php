@@ -265,12 +265,41 @@
                                         </span>
                                     </td>
                                     <td class="px-4 py-3">@{{ log.message }}</td>
-                                    <td class="px-4 py-3 max-w-xs truncate">
+                                    <td class="px-4 py-3">
                                         <div v-if="log.data && log.data.content_preview && log.data.content_preview.startsWith('http')">
                                             <a :href="log.data.content_preview" target="_blank" class="text-blue-400 hover:underline">点击打开链接</a>
                                         </div>
-                                        <div v-else :title="JSON.stringify(log.data)">
-                                            @{{ log.data ? JSON.stringify(log.data) : '-' }}
+                                        <div v-else-if="log.data && (log.data.has_regex || log.data.original_regex || log.data.extraction_method)" class="space-y-1 text-xs">
+                                            <div v-if="log.data.has_regex" class="flex gap-2">
+                                                <span class="text-gray-500">正则:</span>
+                                                <span class="text-yellow-300 font-mono break-all">@{{ log.data.original_regex || '-' }}</span>
+                                            </div>
+                                            <div v-if="log.data.cleaned_regex && log.data.cleaned_regex !== log.data.original_regex" class="flex gap-2">
+                                                <span class="text-gray-500">处理后:</span>
+                                                <span class="text-yellow-200 font-mono break-all">@{{ log.data.cleaned_regex }}</span>
+                                            </div>
+                                            <div v-if="log.data.extraction_method" class="flex gap-2">
+                                                <span class="text-gray-500">方法:</span>
+                                                <span :class="log.data.extraction_success ? 'text-green-300' : 'text-red-300'">
+                                                    @{{ log.data.extraction_method }}
+                                                    @{{ log.data.extraction_success ? '✓' : '✗' }}
+                                                </span>
+                                            </div>
+                                            <div v-if="log.data.extracted_content" class="flex gap-2">
+                                                <span class="text-gray-500">提取内容:</span>
+                                                <span class="text-white font-mono break-all">@{{ log.data.extracted_content.substring(0, 50) }}@{{ log.data.extracted_content.length > 50 ? '...' : '' }}</span>
+                                            </div>
+                                            <div v-if="log.data.failure_reason" class="flex gap-2">
+                                                <span class="text-gray-500">失败原因:</span>
+                                                <span class="text-red-300 break-all">@{{ log.data.failure_reason }}</span>
+                                            </div>
+                                            <div v-if="log.data.content_preview && !log.data.content_preview.startsWith('http')" class="flex gap-2">
+                                                <span class="text-gray-500">内容预览:</span>
+                                                <span class="text-gray-300 break-all">@{{ log.data.content_preview }}</span>
+                                            </div>
+                                        </div>
+                                        <div v-else :title="log.data ? JSON.stringify(log.data, null, 2) : ''" class="max-w-xs truncate text-xs font-mono">
+                                            @{{ log.data ? JSON.stringify(log.data).substring(0, 100) + (JSON.stringify(log.data).length > 100 ? '...' : '') : '-' }}
                                         </div>
                                     </td>
                                 </tr>
