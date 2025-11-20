@@ -145,14 +145,28 @@ class OttController extends Controller
 
         // Check Ignore Regex
         if ($matchedAccount->ignore_regex) {
+            // 从邮件内容中提取正文部分（排除邮件头）
+            // 邮件头通常以 "Received:" 开始，到第一个空行结束
+            $emailBody = $content;
+            if (preg_match('/\r?\n\r?\n/', $content, $matches, PREG_OFFSET_CAPTURE)) {
+                $headerEndPos = $matches[0][1] + strlen($matches[0][0]);
+                $emailBody = substr($content, $headerEndPos);
+            } elseif (preg_match('/^Received:/m', $content) && preg_match('/(\r?\n\r?\n|$)/', $content, $matches, PREG_OFFSET_CAPTURE)) {
+                // 如果找到了 Received: 但没有明显的空行分隔，尝试查找第一个空行或文件结尾
+                $headerEndPos = $matches[0][1] + strlen($matches[0][0]);
+                $emailBody = substr($content, $headerEndPos);
+            }
+            
             $cleanIgnoreRegex = $this->cleanRegex($matchedAccount->ignore_regex);
             $subjectMatch = @preg_match($cleanIgnoreRegex, $subject, $subjectMatches);
-            $contentMatch = @preg_match($cleanIgnoreRegex, $content, $contentMatches);
+            // 只在邮件正文中匹配，不在邮件头中匹配
+            $contentMatch = @preg_match($cleanIgnoreRegex, $emailBody, $contentMatches);
             
             @file_put_contents(storage_path('logs/webhook_debug.log'), 
                 "=== Step 3.1: Ignore Regex 检查 ===\n" .
                 "Original regex: " . $matchedAccount->ignore_regex . "\n" .
                 "Cleaned regex: " . $cleanIgnoreRegex . "\n" .
+                "Email body length: " . strlen($emailBody) . " (original: " . strlen($content) . ")\n" .
                 "Subject match: " . ($subjectMatch ? 'YES' : 'NO') . "\n" .
                 "Content match: " . ($contentMatch ? 'YES' : 'NO') . "\n\n",
                 FILE_APPEND | LOCK_EX
@@ -160,7 +174,7 @@ class OttController extends Controller
             
             if ($subjectMatch || $contentMatch) {
                 $matchSource = $subjectMatch ? 'subject' : 'content';
-                $matchText = $subjectMatch ? substr($subject, 0, 100) : substr($content, 0, 200);
+                $matchText = $subjectMatch ? substr($subject, 0, 100) : substr($emailBody, 0, 200);
                 $matchDetails = $subjectMatch ? $subjectMatches : $contentMatches;
                 
                 @file_put_contents(storage_path('logs/webhook_debug.log'), 
