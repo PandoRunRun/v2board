@@ -106,7 +106,11 @@ class OttController extends Controller
             ->where('received_at', '>=', $validAfter)
             ->orderBy('received_at', 'desc')
             ->limit(5)
-            ->get();
+            ->get()
+            ->map(function ($message) use ($validityMinutes) {
+                $message->expired_at = $message->received_at + ($validityMinutes * 60);
+                return $message;
+            });
 
         return response([
             'data' => $messages
