@@ -18,7 +18,7 @@
             <div class="flex justify-between items-center mb-8">
                 <h1 class="text-3xl font-bold text-white">OTT 账号管理</h1>
                 <div class="space-x-4">
-                    <!-- Tabs removed, single view now -->
+                    <a href="/<?php echo config('v2board.secure_path', config('v2board.frontend_admin_path', hash('crc32b', config('app.key')))); ?>/ott/renewal" class="text-gray-400 hover:text-white">续费管理</a>
                 </div>
             </div>
 
@@ -55,7 +55,7 @@
                             <p><span class="text-gray-500">每用户年费:</span> <span class="text-yellow-400">@{{ calculateCost(account) }}</span></p>
                             <p><span class="text-gray-500">状态:</span> 
                                 <span :class="account.is_active ? 'text-green-400' : 'text-red-400'">
-                                    @{{ account.is_active ? 'Active' : 'Inactive' }}
+                                    @{{ account.is_active ? '激活' : '停用' }}
                                 </span>
                             </p>
                         </div>
@@ -83,7 +83,7 @@
                         </div>
                         <div>
                             <label class="block text-sm text-gray-400 mb-1">类型</label>
-                            <input v-model="accountForm.type" class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white" placeholder="netflix">
+                            <input v-model="accountForm.type" class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white" placeholder="例如: netflix">
                         </div>
                         <div>
                             <label class="block text-sm text-gray-400 mb-1">用户组 ID (可选)</label>
@@ -104,7 +104,7 @@
 
                         <div>
                             <label class="block text-sm text-gray-400 mb-1">发件人过滤 (正则)</label>
-                            <input v-model="accountForm.sender_filter" class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white" placeholder="/netflix/i">
+                            <input v-model="accountForm.sender_filter" class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white" placeholder="例如: /netflix/i">
                         </div>
                         <div>
                             <label class="block text-sm text-gray-400 mb-1">收件人过滤 (正则)</label>
@@ -116,7 +116,7 @@
                         </div>
                         <div class="col-span-2">
                             <label class="block text-sm text-gray-400 mb-1">忽略正则 (匹配时不存储)</label>
-                            <input v-model="accountForm.ignore_regex" class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white" placeholder="/reset password/i">
+                            <input v-model="accountForm.ignore_regex" class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white" placeholder="例如: /重置密码/i">
                         </div>
                         <div>
                             <label class="block text-sm text-gray-400 mb-1">OTP 有效期 (分钟)</label>
@@ -139,7 +139,7 @@
                             <input v-model="accountForm.shared_seats" type="number" class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white">
                         </div>
                         <div class="flex items-end pb-2">
-                            <span class="text-gray-400 text-sm">Calc 每用户年费: <span class="text-yellow-400 font-bold">@{{ calculateFormCost() }}</span></span>
+                            <span class="text-gray-400 text-sm">计算每用户年费: <span class="text-yellow-400 font-bold">@{{ calculateFormCost() }}</span></span>
                         </div>
 
                         <div class="col-span-2 flex gap-6 mt-2 border-t border-gray-700 pt-4">
@@ -184,10 +184,10 @@
                                 <input v-model="bindForm.expired_at" type="date" class="w-full bg-gray-600 border border-gray-500 rounded px-3 py-2 text-white text-sm">
                             </div>
                             <div class="row-start-2 col-span-1 md:col-span-2">
-                                <input v-model="bindForm.sub_account_id" class="w-full bg-gray-600 border border-gray-500 rounded px-3 py-2 text-white text-sm" placeholder="Profile Name (e.g. Kids)">
+                                <input v-model="bindForm.sub_account_id" class="w-full bg-gray-600 border border-gray-500 rounded px-3 py-2 text-white text-sm" placeholder="子账号名称 (例如: 儿童)">
                             </div>
                             <div class="row-start-2">
-                                <input v-model="bindForm.sub_account_pin" class="w-full bg-gray-600 border border-gray-500 rounded px-3 py-2 text-white text-sm" placeholder="PIN (e.g. 1234)">
+                                <input v-model="bindForm.sub_account_pin" class="w-full bg-gray-600 border border-gray-500 rounded px-3 py-2 text-white text-sm" placeholder="PIN码 (例如: 1234)">
                             </div>
                             <div class="row-start-2">
                                 <button @click="bindUser" class="w-full bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded text-sm">绑定</button>

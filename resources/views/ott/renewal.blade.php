@@ -18,7 +18,7 @@
             <div class="flex justify-between items-center mb-8">
                 <h1 class="text-3xl font-bold text-white">OTT 续费管理</h1>
                 <div class="space-x-4">
-                    <a href="/admin/ott" class="text-gray-400 hover:text-white">返回账号列表</a>
+                    <a href="/<?php echo config('v2board.secure_path', config('v2board.frontend_admin_path', hash('crc32b', config('app.key')))); ?>/ott" class="text-gray-400 hover:text-white">返回账号列表</a>
                 </div>
             </div>
 
@@ -111,7 +111,7 @@
                                 <td class="px-4 py-3">@{{ item.price }}</td>
                                 <td class="px-4 py-3">
                                     <span :class="item.is_paid ? 'bg-green-900 text-green-300' : 'bg-red-900 text-red-300'" class="px-2 py-1 rounded text-xs">
-                                        @{{ item.is_paid ? 'PAID' : 'UNPAID' }}
+                                        @{{ item.is_paid ? '已付款' : '未付款' }}
                                     </span>
                                 </td>
                                 <td class="px-4 py-3 text-right space-x-2">
@@ -198,7 +198,7 @@
                     <div class="text-center">
                         <div class="inline-block px-4 py-1 rounded-full text-sm font-bold uppercase tracking-wide"
                              :class="receiptItem.is_paid ? 'bg-green-100 text-green-800 border border-green-200' : 'bg-red-100 text-red-800 border border-red-200'">
-                            @{{ receiptItem.is_paid ? 'PAID' : 'UNPAID' }}
+                            @{{ receiptItem.is_paid ? '已付款' : '未付款' }}
                         </div>
                         <p class="text-xs text-gray-400 mt-4">由 V2Board OTT 系统生成</p>
                     </div>
