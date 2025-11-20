@@ -43,6 +43,10 @@ class Kernel extends ConsoleKernel
         $schedule->command('send:remindMail')->dailyAt('11:30');
         // horizon metrics
         $schedule->command('horizon:snapshot')->everyFiveMinutes();
+        
+        // ott
+        $schedule->command('ott:cleanup')->everyMinute()->runInBackground();
+        $schedule->command('ott:renewal-switch')->yearly()->runInBackground();
     }
 
     /**
