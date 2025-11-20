@@ -447,12 +447,8 @@ class OttController extends Controller
             // 修复转义：将 \/ 转换为 /
             $pattern = str_replace('\/', '/', $pattern);
             
-            // 如果有 PHP 标志，在模式后添加分隔符
-            if (!empty($phpFlags)) {
-                return '/' . $pattern . '/' . $phpFlags;
-            }
-            
-            return $pattern;
+            // 始终返回带分隔符的 PHP 正则表达式格式
+            return '/' . $pattern . '/' . $phpFlags;
         }
 
         // 如果没有分隔符，仍然修复可能的转义问题
