@@ -39,8 +39,8 @@
                     <div v-for="account in accounts" :key="account.id" class="bg-gray-800 p-6 rounded-lg shadow-lg border border-gray-700 flex flex-col">
                         <div class="flex justify-between items-start mb-4">
                             <div>
-                                <h3 class="text-xl font-bold text-white">{{ account.name }}</h3>
-                                <span class="text-sm text-gray-400 bg-gray-900 px-2 py-1 rounded">{{ account.type }}</span>
+                                <h3 class="text-xl font-bold text-white">@{{ account.name }}</h3>
+                                <span class="text-sm text-gray-400 bg-gray-900 px-2 py-1 rounded">@{{ account.type }}</span>
                             </div>
                             <div class="flex space-x-2">
                                 <button @click="openAccountModal(account)" class="text-blue-400 hover:text-blue-300">Edit</button>
@@ -48,14 +48,14 @@
                             </div>
                         </div>
                         <div class="space-y-2 text-sm text-gray-300 flex-grow">
-                            <p><span class="text-gray-500">Username:</span> {{ account.username }}</p>
-                            <p><span class="text-gray-500">OTP:</span> {{ account.has_otp ? 'Yes' : 'No' }}</p>
-                            <p><span class="text-gray-500">Shared:</span> {{ account.is_shared_credentials ? 'Yes' : 'No' }}</p>
-                            <p><span class="text-gray-500">Seats:</span> {{ account.shared_seats }}</p>
-                            <p><span class="text-gray-500">Cost/User/Year:</span> <span class="text-yellow-400">{{ calculateCost(account) }}</span></p>
+                            <p><span class="text-gray-500">Username:</span> @{{ account.username }}</p>
+                            <p><span class="text-gray-500">OTP:</span> @{{ account.has_otp ? 'Yes' : 'No' }}</p>
+                            <p><span class="text-gray-500">Shared:</span> @{{ account.is_shared_credentials ? 'Yes' : 'No' }}</p>
+                            <p><span class="text-gray-500">Seats:</span> @{{ account.shared_seats }}</p>
+                            <p><span class="text-gray-500">Cost/User/Year:</span> <span class="text-yellow-400">@{{ calculateCost(account) }}</span></p>
                             <p><span class="text-gray-500">Status:</span> 
                                 <span :class="account.is_active ? 'text-green-400' : 'text-red-400'">
-                                    {{ account.is_active ? 'Active' : 'Inactive' }}
+                                    @{{ account.is_active ? 'Active' : 'Inactive' }}
                                 </span>
                             </p>
                         </div>
