@@ -39,10 +39,23 @@ class OttController extends Controller
         $subject = $request->input('subject');
         $content = $request->input('content'); // Body or Raw Content
 
+        // 从邮件内容中提取真实的 From 邮箱（CF Worker 发送的 sender 可能是 Amazon SES 地址）
+        $realSender = $sender;
+        if (preg_match('/^From:\s*(.+)$/mi', $content, $fromMatches)) {
+            $fromHeader = trim($fromMatches[1]);
+            // 提取邮箱地址（可能是 "Name <email@domain.com>" 格式）
+            if (preg_match('/<([^>]+)>/', $fromHeader, $emailMatches)) {
+                $realSender = trim($emailMatches[1]);
+            } elseif (preg_match('/([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/', $fromHeader, $emailMatches)) {
+                $realSender = trim($emailMatches[1]);
+            }
+        }
+
         // 调试：记录关键参数
         @file_put_contents(storage_path('logs/webhook_debug.log'), 
             "=== Step 1: 参数提取 ===\n" .
-            "Sender: $sender\n" .
+            "CF Sender: $sender\n" .
+            "Real Sender: $realSender\n" .
             "Recipient: $recipient\n" .
             "Subject: $subject\n" .
             "Content length: " . strlen($content) . "\n\n",
@@ -75,9 +88,14 @@ class OttController extends Controller
             }
 
             // Check Sender
+            // 优先使用真实的发送者邮箱进行匹配，如果失败则尝试 CF Worker 发送的 sender
             $senderMatch = false;
             if ($account->sender_filter) {
-                if (strpos($sender, $account->sender_filter) !== false) {
+                // 先尝试真实发送者
+                if (strpos($realSender, $account->sender_filter) !== false) {
+                    $senderMatch = true;
+                } elseif (strpos($sender, $account->sender_filter) !== false) {
+                    // 如果真实发送者不匹配，尝试 CF Worker 发送的 sender
                     $senderMatch = true;
                 }
             } else {
