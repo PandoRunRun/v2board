@@ -146,14 +146,43 @@ class OttController extends Controller
         // Check Ignore Regex
         if ($matchedAccount->ignore_regex) {
             $cleanIgnoreRegex = $this->cleanRegex($matchedAccount->ignore_regex);
-            if (@preg_match($cleanIgnoreRegex, $subject) || @preg_match($cleanIgnoreRegex, $content)) {
+            $subjectMatch = @preg_match($cleanIgnoreRegex, $subject, $subjectMatches);
+            $contentMatch = @preg_match($cleanIgnoreRegex, $content, $contentMatches);
+            
+            @file_put_contents(storage_path('logs/webhook_debug.log'), 
+                "=== Step 3.1: Ignore Regex 检查 ===\n" .
+                "Original regex: " . $matchedAccount->ignore_regex . "\n" .
+                "Cleaned regex: " . $cleanIgnoreRegex . "\n" .
+                "Subject match: " . ($subjectMatch ? 'YES' : 'NO') . "\n" .
+                "Content match: " . ($contentMatch ? 'YES' : 'NO') . "\n\n",
+                FILE_APPEND | LOCK_EX
+            );
+            
+            if ($subjectMatch || $contentMatch) {
+                $matchSource = $subjectMatch ? 'subject' : 'content';
+                $matchText = $subjectMatch ? substr($subject, 0, 100) : substr($content, 0, 200);
+                
                 \App\Models\OttLog::create([
                     'account_id' => $matchedAccount->id,
                     'type' => 'capture_ignore',
                     'status' => true,
-                    'message' => 'Ignored by regex',
-                    'data' => ['subject' => $subject]
+                    'message' => 'Ignored by regex (matched in ' . $matchSource . ')',
+                    'data' => [
+                        'subject' => $subject,
+                        'ignore_regex' => $matchedAccount->ignore_regex,
+                        'cleaned_regex' => $cleanIgnoreRegex,
+                        'match_source' => $matchSource,
+                        'matched_text' => $matchText
+                    ]
                 ]);
+                
+                @file_put_contents(storage_path('logs/webhook_debug.log'), 
+                    "=== Step 3.2: 被 Ignore Regex 拦截 ===\n" .
+                    "Match source: $matchSource\n" .
+                    "Matched text: " . substr($matchText, 0, 200) . "\n\n",
+                    FILE_APPEND | LOCK_EX
+                );
+                
                 return response([
                     'data' => true,
                     'message' => 'Ignored by regex'
