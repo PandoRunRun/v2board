@@ -381,10 +381,16 @@
                 const fetchAccountLogs = async (accountId) => {
                     try {
                         const res = await api.post('/account/logs', { account_id: accountId });
-                        accountLogs.value = res.data.data;
+                        console.log('日志 API 响应:', res.data);
+                        accountLogs.value = res.data.data || res.data || [];
+                        console.log('解析后的日志:', accountLogs.value);
+                        if (accountLogs.value.length === 0) {
+                            console.warn('日志列表为空，account_id:', accountId);
+                        }
                     } catch (e) {
-                        console.error(e);
-                        alert('获取日志失败');
+                        console.error('获取日志失败:', e);
+                        console.error('错误详情:', e.response?.data);
+                        alert('获取日志失败: ' + (e.response?.data?.message || e.message));
                     }
                 };
 

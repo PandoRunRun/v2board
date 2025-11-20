@@ -195,13 +195,14 @@ class OttController extends Controller
             'account_id' => 'required|integer'
         ]);
 
-        $logs = \App\Models\OttLog::where('account_id', $request->input('account_id'))
+        $accountId = $request->input('account_id');
+        $logs = \App\Models\OttLog::where('account_id', $accountId)
             ->orderBy('created_at', 'desc')
             ->limit(100)
             ->get();
 
         return response([
-            'data' => $logs
+            'data' => $logs->toArray()
         ]);
     }
 }
