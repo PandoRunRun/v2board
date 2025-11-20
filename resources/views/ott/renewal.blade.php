@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>OTT Renewal Management - V2Board</title>
+    <title>OTT 续费管理 - V2Board</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
@@ -16,15 +16,15 @@
     <div id="app" class="min-h-screen p-6">
         <div class="max-w-7xl mx-auto">
             <div class="flex justify-between items-center mb-8">
-                <h1 class="text-3xl font-bold text-white">OTT Renewal Management</h1>
+                <h1 class="text-3xl font-bold text-white">OTT 续费管理</h1>
                 <div class="space-x-4">
-                    <a href="/admin/ott" class="text-gray-400 hover:text-white">Back to Accounts</a>
+                    <a href="/admin/ott" class="text-gray-400 hover:text-white">返回账号列表</a>
                 </div>
             </div>
 
             <!-- Auth Warning -->
             <div v-if="!token" class="bg-red-600 text-white p-4 rounded mb-6">
-                ⚠️ Authentication Token not found. Please log in to the main Admin Panel first.
+                ⚠️ 未找到身份令牌。请先登录后台管理面板。
             </div>
 
             <div v-if="token">
@@ -32,18 +32,18 @@
                 <div class="bg-gray-800 p-6 rounded-lg shadow-lg border border-gray-700 mb-6">
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
                         <div>
-                            <label class="block text-sm text-gray-400 mb-1">Select Account</label>
+                            <label class="block text-sm text-gray-400 mb-1">选择账号</label>
                             <select v-model="selectedAccountId" @change="fetchRenewals" class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white">
                                 <option v-for="acc in accounts" :value="acc.id">@{{ acc.name }} (@{{ acc.type }})</option>
                             </select>
                         </div>
                         <div>
-                            <label class="block text-sm text-gray-400 mb-1">Target Year</label>
+                            <label class="block text-sm text-gray-400 mb-1">目标年份</label>
                             <input v-model="targetYear" type="number" @change="fetchRenewals" class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white">
                         </div>
                         <div>
                             <button @click="importCurrentUsers" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded w-full">
-                                Import Current Users
+                                导入当前用户
                             </button>
                         </div>
                     </div>
@@ -52,14 +52,14 @@
                 <!-- Stats & Settings -->
                 <div v-if="selectedAccount" class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
                     <div class="bg-gray-800 p-6 rounded-lg shadow-lg border border-gray-700">
-                        <h3 class="text-xl font-bold text-white mb-4">Next Cycle Settings (@{{ targetYear }})</h3>
+                        <h3 class="text-xl font-bold text-white mb-4">下一周期设置 (@{{ targetYear }})</h3>
                         <div class="grid grid-cols-2 gap-4">
                             <div>
-                                <label class="block text-sm text-gray-400 mb-1">Next Yearly Price</label>
+                                <label class="block text-sm text-gray-400 mb-1">下一周期年费</label>
                                 <input v-model="selectedAccount.next_price_yearly" type="number" class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white">
                             </div>
                             <div>
-                                <label class="block text-sm text-gray-400 mb-1">Next Shared Seats</label>
+                                <label class="block text-sm text-gray-400 mb-1">下一周期席位数</label>
                                 <input v-model="selectedAccount.next_shared_seats" type="number" class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white">
                             </div>
                             <div class="col-span-2">
@@ -70,26 +70,26 @@
                         </div>
                     </div>
                     <div class="bg-gray-800 p-6 rounded-lg shadow-lg border border-gray-700">
-                        <h3 class="text-xl font-bold text-white mb-4">Statistics</h3>
+                        <h3 class="text-xl font-bold text-white mb-4">统计</h3>
                         <div class="grid grid-cols-2 gap-4 text-center">
                             <div class="bg-gray-700 p-3 rounded">
-                                <div class="text-gray-400 text-sm">Total Seats</div>
+                                <div class="text-gray-400 text-sm">总席位数</div>
                                 <div class="text-2xl font-bold">@{{ selectedAccount.next_shared_seats || 1 }}</div>
                             </div>
                             <div class="bg-gray-700 p-3 rounded">
-                                <div class="text-gray-400 text-sm">Occupied</div>
+                                <div class="text-gray-400 text-sm">已占用</div>
                                 <div class="text-2xl font-bold text-blue-400">@{{ renewals.length }}</div>
                             </div>
                         </div>
                     </div>
                 </div>
 
-                <!-- Renewal List -->
+                <!-- 续费列表 -->
                 <div v-if="selectedAccount" class="bg-gray-800 rounded-lg shadow-lg border border-gray-700 overflow-hidden">
                     <div class="p-4 border-b border-gray-700 flex justify-between items-center">
-                        <h3 class="text-lg font-bold text-white">Renewal List</h3>
+                        <h3 class="text-lg font-bold text-white">续费列表</h3>
                         <button @click="openAddModal" class="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded text-sm">
-                            + Add User
+                            + 添加用户
                         </button>
                     </div>
                     <table class="w-full text-left text-sm text-gray-300">
@@ -98,7 +98,7 @@
                                 <th class="px-4 py-3">User Email</th>
                                 <th class="px-4 py-3">Profile</th>
                                 <th class="px-4 py-3">PIN</th>
-                                <th class="px-4 py-3">Price</th>
+                                <th class="px-4 py-3">价格</th>
                                 <th class="px-4 py-3">Status</th>
                                 <th class="px-4 py-3 text-right">Actions</th>
                             </tr>
@@ -115,16 +115,16 @@
                                     </span>
                                 </td>
                                 <td class="px-4 py-3 text-right space-x-2">
-                                    <button @click="showReceipt(item)" class="text-yellow-400 hover:text-yellow-300">Receipt</button>
+                                    <button @click="showReceipt(item)" class="text-yellow-400 hover:text-yellow-300">收据</button>
                                     <button @click="togglePaid(item)" class="text-blue-400 hover:text-blue-300">
-                                        @{{ item.is_paid ? 'Mark Unpaid' : 'Mark Paid' }}
+                                        @{{ item.is_paid ? '标记未付款' : '标记已付款' }}
                                     </button>
                                     <button @click="editRenewal(item)" class="text-gray-400 hover:text-white">Edit</button>
-                                    <button @click="deleteRenewal(item.id)" class="text-red-400 hover:text-red-300">Remove</button>
+                                    <button @click="deleteRenewal(item.id)" class="text-red-400 hover:text-red-300">移除</button>
                                 </td>
                             </tr>
                             <tr v-if="renewals.length === 0">
-                                <td colspan="6" class="px-4 py-6 text-center text-gray-500">No renewals found for this year.</td>
+                                <td colspan="6" class="px-4 py-6 text-center text-gray-500">本年度暂无续费记录。</td>
                             </tr>
                         </tbody>
                     </table>
@@ -134,14 +134,14 @@
             <!-- Add/Edit Modal -->
             <div v-if="showModal" class="fixed inset-0 modal flex items-center justify-center p-4 z-50">
                 <div class="bg-gray-800 rounded-lg w-full max-w-md p-6 border border-gray-700">
-                    <h2 class="text-xl font-bold text-white mb-4">@{{ editingItem ? 'Edit Renewal' : 'Add Renewal User' }}</h2>
+                    <h2 class="text-xl font-bold text-white mb-4">@{{ editingItem ? '编辑续费' : '添加续费用户' }}</h2>
                     <div class="space-y-4">
                         <div>
                             <label class="block text-sm text-gray-400 mb-1">User Email</label>
                             <input v-model="form.user_email" :disabled="!!editingItem" class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white">
                         </div>
                         <div>
-                            <label class="block text-sm text-gray-400 mb-1">Price</label>
+                            <label class="block text-sm text-gray-400 mb-1">价格</label>
                             <input v-model="form.price" type="number" step="0.01" class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white">
                         </div>
                         <div class="grid grid-cols-2 gap-4">
@@ -156,7 +156,7 @@
                         </div>
                         <div class="flex items-center space-x-2">
                             <input type="checkbox" v-model="form.is_paid" class="form-checkbox text-green-600">
-                            <span class="text-white">Is Paid</span>
+                            <span class="text-white">已付款</span>
                         </div>
                     </div>
                     <div class="flex justify-end space-x-4 mt-6">
@@ -172,17 +172,17 @@
                     <button @click="showReceiptModal = false" class="absolute top-2 right-2 text-gray-400 hover:text-gray-600">✕</button>
                     
                     <div class="text-center border-b-2 border-dashed border-gray-300 pb-6 mb-6">
-                        <h2 class="text-2xl font-bold uppercase tracking-widest mb-1">Renewal Receipt</h2>
+                        <h2 class="text-2xl font-bold uppercase tracking-widest mb-1">续费收据</h2>
                         <p class="text-sm text-gray-500">@{{ selectedAccount ? selectedAccount.name : '' }}</p>
                     </div>
 
                     <div class="space-y-4 mb-8">
                         <div class="flex justify-between">
-                            <span class="text-gray-600">User</span>
+                            <span class="text-gray-600">用户</span>
                             <span class="font-bold">@{{ receiptItem.user_email }}</span>
                         </div>
                         <div class="flex justify-between">
-                            <span class="text-gray-600">Cycle</span>
+                            <span class="text-gray-600">周期</span>
                             <span class="font-bold">@{{ targetYear }}</span>
                         </div>
                         <div class="flex justify-between">
@@ -190,7 +190,7 @@
                             <span class="font-bold">@{{ receiptItem.sub_account_id || '-' }}</span>
                         </div>
                         <div class="border-t border-gray-200 my-2 pt-2 flex justify-between items-center">
-                            <span class="text-lg font-bold">Total Due</span>
+                            <span class="text-lg font-bold">应付总额</span>
                             <span class="text-2xl font-bold text-blue-600">@{{ receiptItem.price }}</span>
                         </div>
                     </div>
@@ -200,7 +200,7 @@
                              :class="receiptItem.is_paid ? 'bg-green-100 text-green-800 border border-green-200' : 'bg-red-100 text-red-800 border border-red-200'">
                             @{{ receiptItem.is_paid ? 'PAID' : 'UNPAID' }}
                         </div>
-                        <p class="text-xs text-gray-400 mt-4">Generated by V2Board OTT System</p>
+                        <p class="text-xs text-gray-400 mt-4">由 V2Board OTT 系统生成</p>
                     </div>
                 </div>
             </div>

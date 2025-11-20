@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>OTT Management - V2Board</title>
+    <title>OTT 账号管理 - V2Board</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
@@ -16,7 +16,7 @@
     <div id="app" class="min-h-screen p-6">
         <div class="max-w-7xl mx-auto">
             <div class="flex justify-between items-center mb-8">
-                <h1 class="text-3xl font-bold text-white">OTT Management</h1>
+                <h1 class="text-3xl font-bold text-white">OTT 账号管理</h1>
                 <div class="space-x-4">
                     <!-- Tabs removed, single view now -->
                 </div>
@@ -24,14 +24,14 @@
 
             <!-- Auth Warning -->
             <div v-if="!token" class="bg-red-600 text-white p-4 rounded mb-6">
-                ⚠️ Authentication Token not found. Please log in to the main Admin Panel first, then refresh this page.
+                ⚠️ 未找到身份令牌。请先登录后台管理面板，然后刷新此页面。
             </div>
 
             <!-- Accounts List -->
             <div v-if="token">
                 <div class="flex justify-end mb-4">
                     <button @click="openAccountModal()" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded">
-                        + Add Account
+                        + 添加账号
                     </button>
                 </div>
                 
@@ -43,17 +43,17 @@
                                 <span class="text-sm text-gray-400 bg-gray-900 px-2 py-1 rounded">@{{ account.type }}</span>
                             </div>
                             <div class="flex space-x-2">
-                                <button @click="openAccountModal(account)" class="text-blue-400 hover:text-blue-300">Edit</button>
-                                <button @click="deleteAccount(account.id)" class="text-red-400 hover:text-red-300">Delete</button>
+                                <button @click="openAccountModal(account)" class="text-blue-400 hover:text-blue-300">编辑</button>
+                                <button @click="deleteAccount(account.id)" class="text-red-400 hover:text-red-300">删除</button>
                             </div>
                         </div>
                         <div class="space-y-2 text-sm text-gray-300 flex-grow">
-                            <p><span class="text-gray-500">Username:</span> @{{ account.username }}</p>
+                            <p><span class="text-gray-500">用户名:</span> @{{ account.username }}</p>
                             <p><span class="text-gray-500">OTP:</span> @{{ account.has_otp ? 'Yes' : 'No' }}</p>
-                            <p><span class="text-gray-500">Shared:</span> @{{ account.is_shared_credentials ? 'Yes' : 'No' }}</p>
-                            <p><span class="text-gray-500">Seats:</span> @{{ account.shared_seats }}</p>
-                            <p><span class="text-gray-500">Cost/User/Year:</span> <span class="text-yellow-400">@{{ calculateCost(account) }}</span></p>
-                            <p><span class="text-gray-500">Status:</span> 
+                            <p><span class="text-gray-500">共享:</span> @{{ account.is_shared_credentials ? 'Yes' : 'No' }}</p>
+                            <p><span class="text-gray-500">席位:</span> @{{ account.shared_seats }}</p>
+                            <p><span class="text-gray-500">每用户年费:</span> <span class="text-yellow-400">@{{ calculateCost(account) }}</span></p>
+                            <p><span class="text-gray-500">状态:</span> 
                                 <span :class="account.is_active ? 'text-green-400' : 'text-red-400'">
                                     @{{ account.is_active ? 'Active' : 'Inactive' }}
                                 </span>
@@ -64,7 +64,7 @@
                                 <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                                     <path d="M9 6a3 3 0 11-6 0 3 3 0 016 0zM17 6a3 3 0 11-6 0 3 3 0 016 0zM12.93 17c.046-.327.07-.66.07-1a6.97 6.97 0 00-1.5-4.33A5 5 0 0119 16v1h-6.07zM6 11a5 5 0 015 5v1H1v-1a5 5 0 015-5z" />
                                 </svg>
-                                Manage Users
+                                管理用户
                             </button>
                         </div>
                     </div>
@@ -74,19 +74,19 @@
             <!-- Account Modal -->
             <div v-if="showAccountModal" class="fixed inset-0 modal flex items-center justify-center p-4 z-50">
                 <div class="bg-gray-800 rounded-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto p-6 border border-gray-700">
-                    <h2 class="text-2xl font-bold text-white mb-6">@{{ editingAccount ? 'Edit Account' : 'New Account' }}</h2>
+                    <h2 class="text-2xl font-bold text-white mb-6">@{{ editingAccount ? '编辑账号' : '新建账号' }}</h2>
                     
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div class="col-span-2">
-                            <label class="block text-sm text-gray-400 mb-1">Name</label>
+                            <label class="block text-sm text-gray-400 mb-1">名称</label>
                             <input v-model="accountForm.name" class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white">
                         </div>
                         <div>
-                            <label class="block text-sm text-gray-400 mb-1">Type</label>
+                            <label class="block text-sm text-gray-400 mb-1">类型</label>
                             <input v-model="accountForm.type" class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white" placeholder="netflix">
                         </div>
                         <div>
-                            <label class="block text-sm text-gray-400 mb-1">Group ID (Optional)</label>
+                            <label class="block text-sm text-gray-400 mb-1">用户组 ID (可选)</label>
                             <input v-model="accountForm.group_id" type="number" class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white">
                         </div>
                         <div>
@@ -94,62 +94,62 @@
                             <input v-model="accountForm.username" class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white">
                         </div>
                         <div>
-                            <label class="block text-sm text-gray-400 mb-1">Password</label>
+                            <label class="block text-sm text-gray-400 mb-1">密码</label>
                             <input v-model="accountForm.password" class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white">
                         </div>
                         
                         <div class="col-span-2 border-t border-gray-700 pt-4 mt-2">
-                            <h3 class="text-lg font-semibold text-white mb-3">Email & OTP Settings</h3>
+                            <h3 class="text-lg font-semibold text-white mb-3">邮件和OTP设置</h3>
                         </div>
 
                         <div>
-                            <label class="block text-sm text-gray-400 mb-1">Sender Filter (Regex)</label>
+                            <label class="block text-sm text-gray-400 mb-1">发件人过滤 (正则)</label>
                             <input v-model="accountForm.sender_filter" class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white" placeholder="/netflix/i">
                         </div>
                         <div>
-                            <label class="block text-sm text-gray-400 mb-1">Recipient Filter (Regex)</label>
+                            <label class="block text-sm text-gray-400 mb-1">收件人过滤 (正则)</label>
                             <input v-model="accountForm.recipient_filter" class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white">
                         </div>
                         <div class="col-span-2">
-                            <label class="block text-sm text-gray-400 mb-1">Subject/Content OTP Regex</label>
+                            <label class="block text-sm text-gray-400 mb-1">主题/内容 OTP 正则</label>
                             <input v-model="accountForm.subject_regex" class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white" placeholder="/code is (\d+)/">
                         </div>
                         <div class="col-span-2">
-                            <label class="block text-sm text-gray-400 mb-1">Ignore Regex (Don't store if matches)</label>
+                            <label class="block text-sm text-gray-400 mb-1">忽略正则 (匹配时不存储)</label>
                             <input v-model="accountForm.ignore_regex" class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white" placeholder="/reset password/i">
                         </div>
                         <div>
-                            <label class="block text-sm text-gray-400 mb-1">OTP Validity (Minutes)</label>
+                            <label class="block text-sm text-gray-400 mb-1">OTP 有效期 (分钟)</label>
                             <input v-model="accountForm.otp_validity_minutes" type="number" class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white">
                         </div>
 
                         <div class="col-span-2 border-t border-gray-700 pt-4 mt-2">
-                            <h3 class="text-lg font-semibold text-white mb-3">Pricing & Seats</h3>
+                            <h3 class="text-lg font-semibold text-white mb-3">价格与席位</h3>
                         </div>
                         <div>
-                            <label class="block text-sm text-gray-400 mb-1">Monthly Price (Total)</label>
+                            <label class="block text-sm text-gray-400 mb-1">月费 (总计)</label>
                             <input v-model="accountForm.price_monthly" type="number" step="0.01" class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white">
                         </div>
                         <div>
-                            <label class="block text-sm text-gray-400 mb-1">Yearly Price (Total)</label>
+                            <label class="block text-sm text-gray-400 mb-1">年费 (总计)</label>
                             <input v-model="accountForm.price_yearly" type="number" step="0.01" class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white">
                         </div>
                         <div>
-                            <label class="block text-sm text-gray-400 mb-1">Shared Seats</label>
+                            <label class="block text-sm text-gray-400 mb-1">共享席位数</label>
                             <input v-model="accountForm.shared_seats" type="number" class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white">
                         </div>
                         <div class="flex items-end pb-2">
-                            <span class="text-gray-400 text-sm">Calc Cost/User/Year: <span class="text-yellow-400 font-bold">@{{ calculateFormCost() }}</span></span>
+                            <span class="text-gray-400 text-sm">Calc 每用户年费: <span class="text-yellow-400 font-bold">@{{ calculateFormCost() }}</span></span>
                         </div>
 
                         <div class="col-span-2 flex gap-6 mt-2 border-t border-gray-700 pt-4">
                             <label class="flex items-center space-x-2 cursor-pointer">
                                 <input type="checkbox" v-model="accountForm.has_otp" class="form-checkbox text-blue-600">
-                                <span class="text-white">Has OTP</span>
+                                <span class="text-white">需要 OTP</span>
                             </label>
                             <label class="flex items-center space-x-2 cursor-pointer">
                                 <input type="checkbox" v-model="accountForm.is_shared_credentials" class="form-checkbox text-blue-600">
-                                <span class="text-white">Shared Credentials</span>
+                                <span class="text-white">共享凭证</span>
                             </label>
                             <label class="flex items-center space-x-2 cursor-pointer">
                                 <input type="checkbox" v-model="accountForm.is_active" class="form-checkbox text-green-600">
@@ -159,8 +159,8 @@
                     </div>
 
                     <div class="flex justify-end space-x-4 mt-8">
-                        <button @click="showAccountModal = false" class="px-4 py-2 text-gray-400 hover:text-white">Cancel</button>
-                        <button @click="saveAccount" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded">Save</button>
+                        <button @click="showAccountModal = false" class="px-4 py-2 text-gray-400 hover:text-white">取消</button>
+                        <button @click="saveAccount" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded">保存</button>
                     </div>
                 </div>
             </div>
@@ -175,10 +175,10 @@
 
                     <!-- Add User Form -->
                     <div class="bg-gray-700 p-4 rounded mb-6">
-                        <h3 class="text-lg font-semibold text-white mb-3">Add / Update User Binding</h3>
+                        <h3 class="text-lg font-semibold text-white mb-3">添加/更新用户绑定</h3>
                         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
                             <div class="col-span-1 md:col-span-2">
-                                <input v-model="bindForm.email" type="email" class="w-full bg-gray-600 border border-gray-500 rounded px-3 py-2 text-white text-sm" placeholder="User Email">
+                                <input v-model="bindForm.email" type="email" class="w-full bg-gray-600 border border-gray-500 rounded px-3 py-2 text-white text-sm" placeholder="用户邮箱">
                             </div>
                             <div>
                                 <input v-model="bindForm.expired_at" type="date" class="w-full bg-gray-600 border border-gray-500 rounded px-3 py-2 text-white text-sm">
@@ -190,7 +190,7 @@
                                 <input v-model="bindForm.sub_account_pin" class="w-full bg-gray-600 border border-gray-500 rounded px-3 py-2 text-white text-sm" placeholder="PIN (e.g. 1234)">
                             </div>
                             <div class="row-start-2">
-                                <button @click="bindUser" class="w-full bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded text-sm">Bind</button>
+                                <button @click="bindUser" class="w-full bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded text-sm">绑定</button>
                             </div>
                         </div>
                     </div>
@@ -200,11 +200,11 @@
                         <table class="w-full text-left text-sm text-gray-300">
                             <thead class="bg-gray-900 text-gray-400 uppercase font-medium">
                                 <tr>
-                                    <th class="px-4 py-3">User Email</th>
-                                    <th class="px-4 py-3">Profile</th>
+                                    <th class="px-4 py-3">用户邮箱</th>
+                                    <th class="px-4 py-3">子账号</th>
                                     <th class="px-4 py-3">PIN</th>
-                                    <th class="px-4 py-3">Expires</th>
-                                    <th class="px-4 py-3 text-right">Actions</th>
+                                    <th class="px-4 py-3">过期时间</th>
+                                    <th class="px-4 py-3 text-right">操作</th>
                                 </tr>
                             </thead>
                             <tbody class="divide-y divide-gray-700">
@@ -216,12 +216,12 @@
                                         @{{ formatDate(user.expired_at) }}
                                     </td>
                                     <td class="px-4 py-3 text-right space-x-2">
-                                        <button @click="editUser(user)" class="text-blue-400 hover:text-blue-300">Edit</button>
-                                        <button @click="unbindUser(user.user_id)" class="text-red-400 hover:text-red-300">Unbind</button>
+                                        <button @click="editUser(user)" class="text-blue-400 hover:text-blue-300">编辑</button>
+                                        <button @click="unbindUser(user.user_id)" class="text-red-400 hover:text-red-300">解绑</button>
                                     </td>
                                 </tr>
                                 <tr v-if="accountUsers.length === 0">
-                                    <td colspan="5" class="px-4 py-6 text-center text-gray-500">No users bound to this account.</td>
+                                    <td colspan="5" class="px-4 py-6 text-center text-gray-500">此账号暂无绑定用户。</td>
                                 </tr>
                             </tbody>
                         </table>
