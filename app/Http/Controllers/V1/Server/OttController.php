@@ -188,38 +188,58 @@ class OttController extends Controller
             }
         }
 
-        $message = OttMessage::create([
-            'account_id' => $matchedAccount->id,
-            'subject' => $subject,
-            'content' => $finalContent,
-            'received_at' => time()
-        ]);
-
-        \App\Models\OttLog::create([
-            'account_id' => $matchedAccount->id,
-            'type' => $regexExtractionResult['extraction_success'] || !$regexExtractionResult['has_regex'] ? 'capture_success' : 'capture_fail',
-            'status' => $regexExtractionResult['extraction_success'] || !$regexExtractionResult['has_regex'],
-            'message' => $regexExtractionResult['has_regex'] 
-                ? ($regexExtractionResult['extraction_success'] 
-                    ? 'OTP提取成功 (通过正则表达式: ' . $regexExtractionResult['extraction_method'] . ')'
-                    : 'OTP提取失败: ' . ($regexExtractionResult['failure_reason'] ?? '未知原因'))
-                : 'Message captured (未使用正则表达式)',
-            'data' => array_merge([
+        try {
+            $message = OttMessage::create([
+                'account_id' => $matchedAccount->id,
                 'subject' => $subject,
-                'content_preview' => substr($finalContent, 0, 50),
+                'content' => $finalContent,
+                'received_at' => time()
+            ]);
+
+            \App\Models\OttLog::create([
+                'account_id' => $matchedAccount->id,
+                'type' => $regexExtractionResult['extraction_success'] || !$regexExtractionResult['has_regex'] ? 'capture_success' : 'capture_fail',
+                'status' => $regexExtractionResult['extraction_success'] || !$regexExtractionResult['has_regex'],
+                'message' => $regexExtractionResult['has_regex'] 
+                    ? ($regexExtractionResult['extraction_success'] 
+                        ? 'OTP提取成功 (通过正则表达式: ' . $regexExtractionResult['extraction_method'] . ')'
+                        : 'OTP提取失败: ' . ($regexExtractionResult['failure_reason'] ?? '未知原因'))
+                    : 'Message captured (未使用正则表达式)',
+                'data' => array_merge([
+                    'subject' => $subject,
+                    'content_preview' => substr($finalContent, 0, 50),
+                    'message_id' => $message->id
+                ], $regexExtractionResult)
+            ]);
+
+            // Cleanup old logs (simple probability based cleanup to avoid heavy load)
+            if (rand(1, 100) <= 5) {
+                \App\Models\OttLog::where('created_at', '<', now()->subDays(30))->delete();
+            }
+
+            return response([
+                'data' => true,
                 'message_id' => $message->id
-            ], $regexExtractionResult)
-        ]);
-
-        // Cleanup old logs (simple probability based cleanup to avoid heavy load)
-        if (rand(1, 100) <= 5) {
-            \App\Models\OttLog::where('created_at', '<', now()->subDays(30))->delete();
+            ]);
+        } catch (\Exception $e) {
+            // 确保即使日志创建失败，webhook 也返回成功，避免 CF Worker 重试
+            \App\Models\OttLog::create([
+                'account_id' => $matchedAccount->id ?? null,
+                'type' => 'capture_fail',
+                'status' => false,
+                'message' => '日志创建失败: ' . $e->getMessage(),
+                'data' => [
+                    'subject' => $subject,
+                    'error' => $e->getMessage(),
+                    'trace' => substr($e->getTraceAsString(), 0, 500)
+                ]
+            ]);
+            
+            return response([
+                'data' => true,
+                'message' => 'Message processed but log creation failed'
+            ]);
         }
-
-        return response([
-            'data' => true,
-            'message_id' => $message->id
-        ]);
     }
 
     /**
