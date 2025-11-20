@@ -144,6 +144,13 @@ class OttController extends Controller
                 $ottUser->save();
             }
 
+            // Update User is_ott flag
+            $user = User::find($userId);
+            if ($user && !$user->is_ott) {
+                $user->is_ott = true;
+                $user->save();
+            }
+
             return response([
                 'data' => true
             ]);
@@ -166,6 +173,16 @@ class OttController extends Controller
         OttUser::where('user_id', $request->input('user_id'))
             ->where('account_id', $request->input('account_id'))
             ->delete();
+
+        // Check if user has any other OTT accounts
+        $count = OttUser::where('user_id', $request->input('user_id'))->count();
+        if ($count === 0) {
+            $user = User::find($request->input('user_id'));
+            if ($user) {
+                $user->is_ott = false;
+                $user->save();
+            }
+        }
 
         return response([
             'data' => true
