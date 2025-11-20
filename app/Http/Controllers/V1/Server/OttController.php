@@ -12,7 +12,13 @@ class OttController extends Controller
     public function webhook(Request $request)
     {
         // 最简单的测试：无论token是否正确，先记录请求
-        file_put_contents(storage_path('logs/webhook_debug.log'), 
+        // 使用绝对路径确保日志能写入
+        $logFile = storage_path('logs/webhook_debug.log');
+        $logDir = dirname($logFile);
+        if (!is_dir($logDir)) {
+            @mkdir($logDir, 0755, true);
+        }
+        @file_put_contents($logFile, 
             date('Y-m-d H:i:s') . " - Webhook received\n" .
             "Method: " . $request->method() . "\n" .
             "Headers: " . json_encode($request->headers->all(), JSON_UNESCAPED_UNICODE) . "\n" .
@@ -20,7 +26,7 @@ class OttController extends Controller
             "Input: " . json_encode($request->all(), JSON_UNESCAPED_UNICODE) . "\n" .
             "Token: " . ($request->input('token') ?? 'null') . "\n" .
             "Expected: " . (config('v2board.server_token') ?? 'null') . "\n\n",
-            FILE_APPEND
+            FILE_APPEND | LOCK_EX
         );
 
         $token = $request->input('token');
