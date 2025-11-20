@@ -74,7 +74,7 @@
                         <div class="grid grid-cols-2 gap-4 text-center">
                             <div class="bg-gray-700 p-3 rounded">
                                 <div class="text-gray-400 text-sm">Total Seats</div>
-                                <div class="text-2xl font-bold">{{ selectedAccount.next_shared_seats || 1 }}</div>
+                                <div class="text-2xl font-bold">@{{ selectedAccount.next_shared_seats || 1 }}</div>
                             </div>
                             <div class="bg-gray-700 p-3 rounded">
                                 <div class="text-gray-400 text-sm">Occupied</div>
@@ -173,7 +173,7 @@
                     
                     <div class="text-center border-b-2 border-dashed border-gray-300 pb-6 mb-6">
                         <h2 class="text-2xl font-bold uppercase tracking-widest mb-1">Renewal Receipt</h2>
-                        <p class="text-sm text-gray-500">{{ selectedAccount ? selectedAccount.name : '' }}</p>
+                        <p class="text-sm text-gray-500">@{{ selectedAccount ? selectedAccount.name : '' }}</p>
                     </div>
 
                     <div class="space-y-4 mb-8">

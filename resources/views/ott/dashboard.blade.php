@@ -169,7 +169,7 @@
             <div v-if="showUsersModal" class="fixed inset-0 modal flex items-center justify-center p-4 z-50">
                 <div class="bg-gray-800 rounded-lg w-full max-w-3xl max-h-[90vh] overflow-y-auto p-6 border border-gray-700">
                     <div class="flex justify-between items-center mb-6">
-                        <h2 class="text-2xl font-bold text-white">Users for {{ currentAccount ? currentAccount.name : '' }}</h2>
+                        <h2 class="text-2xl font-bold text-white">Users for @{{ currentAccount ? currentAccount.name : '' }}</h2>
                         <button @click="showUsersModal = false" class="text-gray-400 hover:text-white">✕</button>
                     </div>
 
