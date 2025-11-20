@@ -11,40 +11,8 @@ class OttController extends Controller
 {
     public function webhook(Request $request)
     {
-        // 记录所有 webhook 请求，即使 token 验证失败也记录
-        try {
-            \App\Models\OttLog::create([
-                'type' => 'webhook_received',
-                'status' => true,
-                'message' => 'Webhook received',
-                'data' => [
-                    'sender' => $request->input('sender'),
-                    'recipient' => $request->input('recipient'),
-                    'subject' => $request->input('subject'),
-                    'content_length' => strlen($request->input('content', '')),
-                    'has_token' => $request->has('token')
-                ]
-            ]);
-        } catch (\Exception $e) {
-            // 如果日志创建失败，继续执行
-        }
-
         $token = $request->input('token');
         if ($token !== config('v2board.server_token')) {
-            try {
-                \App\Models\OttLog::create([
-                    'type' => 'webhook_fail',
-                    'status' => false,
-                    'message' => 'Token validation failed',
-                    'data' => [
-                        'sender' => $request->input('sender'),
-                        'recipient' => $request->input('recipient'),
-                        'subject' => $request->input('subject')
-                    ]
-                ]);
-            } catch (\Exception $e) {
-                // 忽略日志创建失败
-            }
             abort(403, 'Invalid Token');
         }
 
