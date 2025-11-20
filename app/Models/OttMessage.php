@@ -9,7 +9,7 @@ class OttMessage extends Model
     protected $table = 'v2_ott_message';
     protected $guarded = ['id'];
     protected $casts = [
-        'received_at' => 'timestamp',
+        'received_at' => 'integer',
         'created_at' => 'timestamp',
         'updated_at' => 'timestamp'
     ];
