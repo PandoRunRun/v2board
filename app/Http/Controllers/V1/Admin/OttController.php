@@ -90,62 +90,70 @@ class OttController extends Controller
 
     public function bind(Request $request)
     {
-        $request->validate([
-            'user_id' => 'nullable|integer',
-            'email' => 'nullable|email',
-            'account_id' => 'required|integer',
-            'expired_at' => 'required|integer',
-            'sub_account_id' => 'nullable|string',
-            'sub_account_pin' => 'nullable|string'
-        ]);
+        try {
+            $request->validate([
+                'user_id' => 'nullable|integer',
+                'email' => 'nullable|email',
+                'account_id' => 'required|integer',
+                'expired_at' => 'required|integer',
+                'sub_account_id' => 'nullable|string',
+                'sub_account_pin' => 'nullable|string'
+            ]);
 
-        $userId = $request->input('user_id');
-        if (!$userId && $request->input('email')) {
-            $user = User::where('email', $request->input('email'))->first();
-            if (!$user) {
+            $userId = $request->input('user_id');
+            if (!$userId && $request->input('email')) {
+                $user = User::where('email', $request->input('email'))->first();
+                if (!$user) {
+                    return response([
+                        'message' => 'User not found with email: ' . $request->input('email')
+                    ], 404);
+                }
+                $userId = $user->id;
+            }
+
+            if (!$userId) {
                 return response([
-                    'message' => 'User not found with email: ' . $request->input('email')
+                    'message' => 'User ID or Email is required'
+                ], 400);
+            }
+
+            $account = OttAccount::find($request->input('account_id'));
+            if (!$account) {
+                return response([
+                    'message' => 'Account not found'
                 ], 404);
             }
-            $userId = $user->id;
-        }
 
-        if (!$userId) {
+            // Check if binding exists
+            $ottUser = OttUser::where('user_id', $userId)
+                ->where('account_id', $account->id)
+                ->first();
+
+            if ($ottUser) {
+                $ottUser->expired_at = $request->input('expired_at');
+                $ottUser->sub_account_id = $request->input('sub_account_id');
+                $ottUser->sub_account_pin = $request->input('sub_account_pin');
+                $ottUser->save();
+            } else {
+                $ottUser = new OttUser();
+                $ottUser->user_id = $userId;
+                $ottUser->account_id = $account->id;
+                $ottUser->expired_at = $request->input('expired_at');
+                $ottUser->sub_account_id = $request->input('sub_account_id');
+                $ottUser->sub_account_pin = $request->input('sub_account_pin');
+                $ottUser->save();
+            }
+
             return response([
-                'message' => 'User ID or Email is required'
-            ], 400);
-        }
-
-        $account = OttAccount::find($request->input('account_id'));
-        if (!$account) {
+                'data' => true
+            ]);
+        } catch (\Exception $e) {
             return response([
-                'message' => 'Account not found'
-            ], 404);
+                'message' => 'Error: ' . $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine()
+            ], 500);
         }
-
-        // Check if binding exists
-        $ottUser = OttUser::where('user_id', $userId)
-            ->where('account_id', $account->id)
-            ->first();
-
-        if ($ottUser) {
-            $ottUser->expired_at = $request->input('expired_at');
-            $ottUser->sub_account_id = $request->input('sub_account_id');
-            $ottUser->sub_account_pin = $request->input('sub_account_pin');
-            $ottUser->save();
-        } else {
-            $ottUser = new OttUser();
-            $ottUser->user_id = $userId;
-            $ottUser->account_id = $account->id;
-            $ottUser->expired_at = $request->input('expired_at');
-            $ottUser->sub_account_id = $request->input('sub_account_id');
-            $ottUser->sub_account_pin = $request->input('sub_account_pin');
-            $ottUser->save();
-        }
-
-        return response([
-            'data' => true
-        ]);
     }
 
     public function unbindUser(Request $request)
