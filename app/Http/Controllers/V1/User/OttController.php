@@ -8,6 +8,7 @@ use App\Models\OttMessage;
 use App\Models\OttRenewal;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\DB;
 
 class OttController extends Controller
 {
@@ -16,20 +17,48 @@ class OttController extends Controller
         try {
             $user = $request->user;
             
+            // Debug: Log user info
+            Log::info('OTT fetchAccount - User info', [
+                'user_id' => $user->id ?? null,
+                'is_ott' => $user->is_ott ?? null,
+                'user_email' => $user->email ?? null
+            ]);
+            
             // Check if user has is_ott field and it's true
             if (!isset($user->is_ott) || !$user->is_ott) {
+                Log::info('OTT fetchAccount - User is not OTT user', [
+                    'user_id' => $user->id ?? null
+                ]);
                 return response([
                     'data' => []
                 ]);
             }
 
+            // Debug: Check direct query to v2_ott_user table
+            $ottUserCount = \DB::table('v2_ott_user')->where('user_id', $user->id)->count();
+            Log::info('OTT fetchAccount - Direct query count', [
+                'user_id' => $user->id,
+                'ott_user_count' => $ottUserCount
+            ]);
+
             // Load accounts with pivot data
             $accounts = $user->ottAccounts()->get();
+            
+            Log::info('OTT fetchAccount - Accounts loaded', [
+                'user_id' => $user->id,
+                'accounts_count' => $accounts->count(),
+                'account_ids' => $accounts->pluck('id')->toArray()
+            ]);
+            
             $data = [];
 
             foreach ($accounts as $account) {
                 // Check if pivot data exists
                 if (!$account->pivot) {
+                    Log::warning('OTT fetchAccount - Account without pivot', [
+                        'user_id' => $user->id,
+                        'account_id' => $account->id
+                    ]);
                     continue;
                 }
 
@@ -58,6 +87,11 @@ class OttController extends Controller
                 }
                 $data[] = $item;
             }
+
+            Log::info('OTT fetchAccount - Final data count', [
+                'user_id' => $user->id,
+                'data_count' => count($data)
+            ]);
 
             return response([
                 'data' => $data
