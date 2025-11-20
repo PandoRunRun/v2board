@@ -171,4 +171,20 @@ class OttController extends Controller
             'data' => true
         ]);
     }
+
+    public function fetchLogs(Request $request)
+    {
+        $request->validate([
+            'account_id' => 'required|integer'
+        ]);
+
+        $logs = \App\Models\OttLog::where('account_id', $request->input('account_id'))
+            ->orderBy('created_at', 'desc')
+            ->limit(100)
+            ->get();
+
+        return response([
+            'data' => $logs
+        ]);
+    }
 }
