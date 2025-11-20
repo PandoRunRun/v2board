@@ -11,40 +11,8 @@ class OttController extends Controller
 {
     public function webhook(Request $request)
     {
-        // 记录所有 webhook 请求，即使 token 验证失败也记录
-        try {
-            \App\Models\OttLog::create([
-                'type' => 'webhook_received',
-                'status' => true,
-                'message' => 'Webhook received',
-                'data' => [
-                    'sender' => $request->input('sender'),
-                    'recipient' => $request->input('recipient'),
-                    'subject' => $request->input('subject'),
-                    'content_length' => strlen($request->input('content', '')),
-                    'has_token' => $request->has('token')
-                ]
-            ]);
-        } catch (\Exception $e) {
-            // 如果日志创建失败，继续执行
-        }
-
         $token = $request->input('token');
         if ($token !== config('v2board.server_token')) {
-            try {
-                \App\Models\OttLog::create([
-                    'type' => 'webhook_fail',
-                    'status' => false,
-                    'message' => 'Token validation failed',
-                    'data' => [
-                        'sender' => $request->input('sender'),
-                        'recipient' => $request->input('recipient'),
-                        'subject' => $request->input('subject')
-                    ]
-                ]);
-            } catch (\Exception $e) {
-                // 忽略日志创建失败
-            }
             abort(403, 'Invalid Token');
         }
 
@@ -239,8 +207,8 @@ class OttController extends Controller
                     : 'Message captured (未使用正则表达式)',
                 'data' => array_merge([
                     'subject' => $subject,
-                    'content_preview' => substr($finalContent, 0, 50),
-                    'message_id' => $message->id
+                    'content_preview' => is_string($finalContent) ? substr($finalContent, 0, 50) : (string)$finalContent,
+                    'message_id' => $message->id ?? null
                 ], $regexExtractionResult)
             ]);
 
@@ -254,17 +222,21 @@ class OttController extends Controller
             ]);
         } catch (\Exception $e) {
             // 确保即使日志创建失败，webhook 也返回成功，避免 CF Worker 重试
-            \App\Models\OttLog::create([
-                'account_id' => $matchedAccount->id ?? null,
-                'type' => 'capture_fail',
-                'status' => false,
-                'message' => '日志创建失败: ' . $e->getMessage(),
-                'data' => [
-                    'subject' => $subject,
-                    'error' => $e->getMessage(),
-                    'trace' => substr($e->getTraceAsString(), 0, 500)
-                ]
-            ]);
+            try {
+                \App\Models\OttLog::create([
+                    'account_id' => $matchedAccount->id ?? null,
+                    'type' => 'capture_fail',
+                    'status' => false,
+                    'message' => '日志创建失败: ' . $e->getMessage(),
+                    'data' => [
+                        'subject' => $subject,
+                        'error' => $e->getMessage(),
+                        'trace' => substr($e->getTraceAsString(), 0, 500)
+                    ]
+                ]);
+            } catch (\Exception $logException) {
+                // 如果日志创建也失败，忽略
+            }
             
             return response([
                 'data' => true,
