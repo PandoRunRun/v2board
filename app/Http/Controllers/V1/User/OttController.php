@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Controllers\V1\Client;
+namespace App\Http\Controllers\V1\User;
 
 use App\Http\Controllers\Controller;
 use App\Models\OttAccount;

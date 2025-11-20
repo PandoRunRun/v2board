@@ -18,7 +18,7 @@ class User extends Model
     public function ottAccounts()
     {
         return $this->belongsToMany(OttAccount::class, 'v2_ott_user', 'user_id', 'account_id')
-            ->withPivot('expired_at')
+            ->withPivot('expired_at', 'sub_account_id', 'sub_account_pin')
             ->withTimestamps();
     }
 }

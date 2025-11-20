@@ -6,7 +6,6 @@ use App\Http\Controllers\Controller;
 use App\Protocols\General;
 use App\Protocols\Singbox\Singbox;
 use App\Protocols\Singbox\SingboxOld;
-use App\Protocols\ClashMeta;
 use App\Services\ServerService;
 use App\Services\UserService;
 use App\Utils\Helper;
@@ -25,7 +24,7 @@ class ClientController extends Controller
         if ($userService->isAvailable($user)) {
             $serverService = new ServerService();
             $servers = $serverService->getAvailableServers($user);
-            if($flag) {
+            if ($flag) {
                 if (!strpos($flag, 'sing')) {
                     $this->setSubscribeInfoToServers($servers, $user);
                     foreach (array_reverse(glob(app_path('Protocols') . '/*.php')) as $file) {
@@ -47,6 +46,55 @@ class ClientController extends Controller
                         $class = new SingboxOld($user, $servers);
                     }
                     return $class->handle();
+                }
+            }
+            $class = new General($user, $servers);
+            return $class->handle();
+        } elseif (!$user['banned']) { // 这里是正确的位置
+            $serverService = new ServerService();
+            $servers = $serverService->getAvailableServers($user);
+
+            // 如果账户不可用，通常 getAvailableServers 可能返回空，需要处理这种情况以避免报错
+            // 这里假设即使不可用也能获取到服务器列表用于展示提示节点。
+            // 如果 $servers 为空，下面的 array_merge($servers[0], ...) 会报错。
+            // 建议添加一个基本的检查，或者构造一个虚拟的服务器节点用于承载提示信息。
+            if (empty($servers)) {
+                 // 构造一个假的 server 数组结构，避免 $servers[0] 不存在导致的错误
+                 // 具体的结构需要参考你的 ServerService 返回的真实结构
+                 $servers = [['name' => '提示', 'server' => '127.0.0.1', 'port' => 0, 'protocol' => 'trojan']]; 
+            }
+
+
+            $useTraffic = $user['u'] + $user['d'];
+            $totalTraffic = $user['transfer_enable'];
+            // 注意：Helper::trafficConvert 可能返回带有单位的字符串，比较时可能需要注意
+            $remainingTrafficValue = $totalTraffic - $useTraffic;
+            
+            array_unshift($servers, array_merge($servers[0], [
+                'name' => "https://潘多快跑.com",
+            ]));
+            array_unshift($servers, array_merge($servers[0], [
+                'name' => "请去往官网重置流量或续费",
+            ]));
+            if ($remainingTrafficValue <= 0) {
+                array_unshift($servers, array_merge($servers[0], [
+                    'name' => "您的流量已用尽",
+                ]));
+            }
+
+            if ($user['expired_at'] !== NULL && $user['expired_at'] <= time()) {
+                 array_unshift($servers, array_merge($servers[0], [
+                    'name' => "您的订阅已过期",
+                ]));
+            }
+
+            if ($flag) {
+                foreach (array_reverse(glob(app_path('Protocols') . '/*.php')) as $file) {
+                    $file = 'App\\Protocols\\' . basename($file, '.php');
+                    $class = new $file($user, $servers);
+                    if (strpos($flag, $class->flag) !== false) {
+                        return $class->handle();
+                    }
                 }
             }
             $class = new General($user, $servers);

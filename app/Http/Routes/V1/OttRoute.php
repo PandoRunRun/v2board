@@ -30,9 +30,9 @@ class OttRoute
             'prefix' => 'user/ott',
             'middleware' => 'client'
         ], function ($router) {
-            $router->get('/account/fetch', 'V1\\Client\\OttController@fetchAccount');
-            $router->get('/message/fetch', 'V1\\Client\\OttController@fetchMessage');
-            $router->get('/renewal/fetch', 'V1\\Client\\OttController@fetchRenewal');
+            $router->get('/account/fetch', 'V1\\User\\OttController@fetchAccount');
+            $router->get('/message/fetch', 'V1\\User\\OttController@fetchMessage');
+            $router->get('/renewal/fetch', 'V1\\User\\OttController@fetchRenewal');
         });
 
         $router->group([
