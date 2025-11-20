@@ -15,15 +15,25 @@ class OttRenewalController extends Controller
     public function fetch(Request $request)
     {
         $request->validate([
-            'account_id' => 'required|integer',
+            'account_id' => 'nullable|integer',
             'target_year' => 'required|integer'
         ]);
 
-        $renewals = OttRenewal::where('account_id', $request->input('account_id'))
-            ->where('target_year', $request->input('target_year'))
+        $query = OttRenewal::where('target_year', $request->input('target_year'))
             ->join('v2_user', 'v2_ott_renewal.user_id', '=', 'v2_user.id')
-            ->select('v2_ott_renewal.*', 'v2_user.email as user_email')
-            ->get();
+            ->join('v2_ott_account', 'v2_ott_renewal.account_id', '=', 'v2_ott_account.id')
+            ->select(
+                'v2_ott_renewal.*', 
+                'v2_user.email as user_email',
+                'v2_ott_account.name as account_name',
+                'v2_ott_account.type as account_type'
+            );
+
+        if ($request->input('account_id')) {
+            $query->where('account_id', $request->input('account_id'));
+        }
+
+        $renewals = $query->get();
 
         return response([
             'data' => $renewals
