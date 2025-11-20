@@ -55,7 +55,7 @@
                             <p><span class="text-gray-500">每用户年费:</span> <span class="text-yellow-400">@{{ calculateCost(account) }}</span></p>
                             <p><span class="text-gray-500">状态:</span> 
                                 <span :class="account.is_active ? 'text-green-400' : 'text-red-400'">
-                                    @{{ account.is_active ? '激活' : '停用' }}
+                                    @{{ account.is_active ? '启用' : '停用' }}
                                 </span>
                             </p>
                         </div>
@@ -139,21 +139,21 @@
                             <input v-model="accountForm.shared_seats" type="number" class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white">
                         </div>
                         <div class="flex items-end pb-2">
-                            <span class="text-gray-400 text-sm">计算每用户年费: <span class="text-yellow-400 font-bold">@{{ calculateFormCost() }}</span></span>
+                            <span class="text-gray-400 text-sm">预估单人年费成本: <span class="text-yellow-400 font-bold">@{{ calculateFormCost() }}</span></span>
                         </div>
 
                         <div class="col-span-2 flex gap-6 mt-2 border-t border-gray-700 pt-4">
                             <label class="flex items-center space-x-2 cursor-pointer">
                                 <input type="checkbox" v-model="accountForm.has_otp" class="form-checkbox text-blue-600">
-                                <span class="text-white">需要 OTP</span>
+                                <span class="text-white">需要验证码</span>
                             </label>
                             <label class="flex items-center space-x-2 cursor-pointer">
                                 <input type="checkbox" v-model="accountForm.is_shared_credentials" class="form-checkbox text-blue-600">
-                                <span class="text-white">共享凭证</span>
+                                <span class="text-white">共享账号密码</span>
                             </label>
                             <label class="flex items-center space-x-2 cursor-pointer">
                                 <input type="checkbox" v-model="accountForm.is_active" class="form-checkbox text-green-600">
-                                <span class="text-white">Active</span>
+                                <span class="text-white">启用</span>
                             </label>
                         </div>
                     </div>
@@ -169,7 +169,7 @@
             <div v-if="showUsersModal" class="fixed inset-0 modal flex items-center justify-center p-4 z-50">
                 <div class="bg-gray-800 rounded-lg w-full max-w-3xl max-h-[90vh] overflow-y-auto p-6 border border-gray-700">
                     <div class="flex justify-between items-center mb-6">
-                        <h2 class="text-2xl font-bold text-white">Users for @{{ currentAccount ? currentAccount.name : '' }}</h2>
+                        <h2 class="text-2xl font-bold text-white">管理用户绑定: @{{ currentAccount ? currentAccount.name : '' }}</h2>
                         <button @click="showUsersModal = false" class="text-gray-400 hover:text-white">✕</button>
                     </div>
 
@@ -178,13 +178,13 @@
                         <h3 class="text-lg font-semibold text-white mb-3">添加/更新用户绑定</h3>
                         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
                             <div class="col-span-1 md:col-span-2">
-                                <input v-model="bindForm.email" type="email" class="w-full bg-gray-600 border border-gray-500 rounded px-3 py-2 text-white text-sm" placeholder="用户邮箱">
+                                <input v-model="bindForm.email" type="email" class="w-full bg-gray-600 border border-gray-500 rounded px-3 py-2 text-white text-sm" placeholder="绑定邮箱">
                             </div>
                             <div>
                                 <input v-model="bindForm.expired_at" type="date" class="w-full bg-gray-600 border border-gray-500 rounded px-3 py-2 text-white text-sm">
                             </div>
                             <div class="row-start-2 col-span-1 md:col-span-2">
-                                <input v-model="bindForm.sub_account_id" class="w-full bg-gray-600 border border-gray-500 rounded px-3 py-2 text-white text-sm" placeholder="子账号名称 (例如: 儿童)">
+                                <input v-model="bindForm.sub_account_id" class="w-full bg-gray-600 border border-gray-500 rounded px-3 py-2 text-white text-sm" placeholder="车位名称 (如: Kids)">
                             </div>
                             <div class="row-start-2">
                                 <input v-model="bindForm.sub_account_pin" class="w-full bg-gray-600 border border-gray-500 rounded px-3 py-2 text-white text-sm" placeholder="PIN码 (例如: 1234)">
@@ -200,8 +200,8 @@
                         <table class="w-full text-left text-sm text-gray-300">
                             <thead class="bg-gray-900 text-gray-400 uppercase font-medium">
                                 <tr>
-                                    <th class="px-4 py-3">用户邮箱</th>
-                                    <th class="px-4 py-3">子账号</th>
+                                    <th class="px-4 py-3">绑定邮箱</th>
+                                    <th class="px-4 py-3">车位/子账号</th>
                                     <th class="px-4 py-3">PIN</th>
                                     <th class="px-4 py-3">过期时间</th>
                                     <th class="px-4 py-3 text-right">操作</th>
@@ -281,7 +281,7 @@
                         accounts.value = res.data.data;
                     } catch (e) {
                         console.error(e);
-                        alert('Failed to fetch accounts');
+                        alert('获取账号列表失败');
                     }
                 };
 
@@ -291,7 +291,7 @@
                         accountUsers.value = res.data.data;
                     } catch (e) {
                         console.error(e);
-                        alert('Failed to fetch users');
+                        alert('获取用户列表失败');
                     }
                 };
 
@@ -330,24 +330,24 @@
                         fetchAccounts();
                     } catch (e) {
                         console.error(e);
-                        alert('Failed to save account');
+                        alert('保存账号失败');
                     }
                 };
 
                 const deleteAccount = async (id) => {
-                    if (!confirm('Are you sure?')) return;
+                    if (!confirm('确定要删除吗？')) return;
                     try {
                         await api.post('/account/drop', { id });
                         fetchAccounts();
                     } catch (e) {
                         console.error(e);
-                        alert('Failed to delete account');
+                        alert('删除账号失败');
                     }
                 };
 
                 const bindUser = async () => {
                     if (!bindForm.value.email || !bindForm.value.expired_at) {
-                        alert('Please fill email and expiry date');
+                        alert('请填写邮箱和过期时间');
                         return;
                     }
                     try {
@@ -367,12 +367,12 @@
                         bindForm.value.sub_account_pin = '';
                     } catch (e) {
                         console.error(e);
-                        alert('Failed to bind user: ' + (e.response && e.response.data && e.response.data.message ? e.response.data.message : e.message));
+                        alert('绑定用户失败: ' + (e.response && e.response.data && e.response.data.message ? e.response.data.message : e.message));
                     }
                 };
 
                 const unbindUser = async (userId) => {
-                    if (!confirm('Unbind this user?')) return;
+                    if (!confirm('确定要解绑此用户吗？')) return;
                     try {
                         await api.post('/user/unbind', {
                             user_id: userId,
@@ -381,7 +381,7 @@
                         fetchAccountUsers(currentAccount.value.id);
                     } catch (e) {
                         console.error(e);
-                        alert('Failed to unbind user');
+                        alert('解绑用户失败');
                     }
                 };
 

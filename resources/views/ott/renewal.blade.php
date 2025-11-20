@@ -64,7 +64,7 @@
                             </div>
                             <div class="col-span-2">
                                 <button @click="saveAccountSettings" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded w-full">
-                                    Save Settings
+                                    保存配置
                                 </button>
                             </div>
                         </div>
@@ -95,12 +95,12 @@
                     <table class="w-full text-left text-sm text-gray-300">
                         <thead class="bg-gray-900 text-gray-400 uppercase font-medium">
                             <tr>
-                                <th class="px-4 py-3">User Email</th>
-                                <th class="px-4 py-3">Profile</th>
+                                <th class="px-4 py-3">用户邮箱</th>
+                                <th class="px-4 py-3">车位/子账号</th>
                                 <th class="px-4 py-3">PIN</th>
                                 <th class="px-4 py-3">价格</th>
-                                <th class="px-4 py-3">Status</th>
-                                <th class="px-4 py-3 text-right">Actions</th>
+                                <th class="px-4 py-3">状态</th>
+                                <th class="px-4 py-3 text-right">操作</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-gray-700">
@@ -119,7 +119,7 @@
                                     <button @click="togglePaid(item)" class="text-blue-400 hover:text-blue-300">
                                         @{{ item.is_paid ? '标记未付款' : '标记已付款' }}
                                     </button>
-                                    <button @click="editRenewal(item)" class="text-gray-400 hover:text-white">Edit</button>
+                                    <button @click="editRenewal(item)" class="text-gray-400 hover:text-white">编辑</button>
                                     <button @click="deleteRenewal(item.id)" class="text-red-400 hover:text-red-300">移除</button>
                                 </td>
                             </tr>
@@ -137,7 +137,7 @@
                     <h2 class="text-xl font-bold text-white mb-4">@{{ editingItem ? '编辑续费' : '添加续费用户' }}</h2>
                     <div class="space-y-4">
                         <div>
-                            <label class="block text-sm text-gray-400 mb-1">User Email</label>
+                            <label class="block text-sm text-gray-400 mb-1">用户邮箱</label>
                             <input v-model="form.user_email" :disabled="!!editingItem" class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white">
                         </div>
                         <div>
@@ -146,7 +146,7 @@
                         </div>
                         <div class="grid grid-cols-2 gap-4">
                             <div>
-                                <label class="block text-sm text-gray-400 mb-1">Profile</label>
+                                <label class="block text-sm text-gray-400 mb-1">车位/子账号</label>
                                 <input v-model="form.sub_account_id" class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white">
                             </div>
                             <div>
@@ -160,8 +160,8 @@
                         </div>
                     </div>
                     <div class="flex justify-end space-x-4 mt-6">
-                        <button @click="showModal = false" class="px-4 py-2 text-gray-400 hover:text-white">Cancel</button>
-                        <button @click="saveRenewal" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded">Save</button>
+                        <button @click="showModal = false" class="px-4 py-2 text-gray-400 hover:text-white">取消</button>
+                        <button @click="saveRenewal" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded">保存</button>
                     </div>
                 </div>
             </div>
@@ -186,7 +186,7 @@
                             <span class="font-bold">@{{ targetYear }}</span>
                         </div>
                         <div class="flex justify-between">
-                            <span class="text-gray-600">Profile</span>
+                            <span class="text-gray-600">车位/子账号</span>
                             <span class="font-bold">@{{ receiptItem.sub_account_id || '-' }}</span>
                         </div>
                         <div class="border-t border-gray-200 my-2 pt-2 flex justify-between items-center">
@@ -283,19 +283,19 @@
                     if (!selectedAccount.value) return;
                     try {
                         await api.post('/account/save', selectedAccount.value);
-                        alert('Settings saved!');
-                    } catch (e) { alert('Failed to save settings'); }
+                        alert('设置已保存！');
+                    } catch (e) { alert('保存设置失败'); }
                 };
 
                 const importCurrentUsers = async () => {
-                    if (!confirm('Import current users to ' + targetYear.value + '? This will skip existing ones.')) return;
+                    if (!confirm('确定要导入当前用户到 ' + targetYear.value + ' 吗？这将跳过已存在的用户。')) return;
                     try {
                         await api.post('/renewal/import', {
                             account_id: selectedAccountId.value,
                             target_year: targetYear.value
                         });
                         fetchRenewals();
-                    } catch (e) { alert('Import failed'); }
+                    } catch (e) { alert('导入失败'); }
                 };
 
                 const openAddModal = () => {
@@ -329,15 +329,15 @@
                         });
                         showModal.value = false;
                         fetchRenewals();
-                    } catch (e) { alert('Failed: ' + (e.response && e.response.data && e.response.data.message ? e.response.data.message : e.message)); }
+                    } catch (e) { alert('失败: ' + (e.response && e.response.data && e.response.data.message ? e.response.data.message : e.message)); }
                 };
 
                 const deleteRenewal = async (id) => {
-                    if (!confirm('Remove this user from renewal list?')) return;
+                    if (!confirm('确定要从续费列表中移除此用户吗？')) return;
                     try {
                         await api.post('/renewal/drop', { id });
                         fetchRenewals();
-                    } catch (e) { alert('Failed to delete'); }
+                    } catch (e) { alert('删除失败'); }
                 };
 
                 const showReceipt = (item) => {
@@ -361,7 +361,7 @@
                         if (showReceiptModal.value && receiptItem.value.id === item.id) {
                             receiptItem.value.is_paid = !item.is_paid;
                         }
-                    } catch (e) { alert('Failed to update status'); }
+                    } catch (e) { alert('更新状态失败'); }
                 };
 
                 onMounted(() => {
