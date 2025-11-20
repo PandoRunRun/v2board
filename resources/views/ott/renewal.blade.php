@@ -34,7 +34,7 @@
                         <div>
                             <label class="block text-sm text-gray-400 mb-1">Select Account</label>
                             <select v-model="selectedAccountId" @change="fetchRenewals" class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white">
-                                <option v-for="acc in accounts" :value="acc.id">{{ acc.name }} ({{ acc.type }})</option>
+                                <option v-for="acc in accounts" :value="acc.id">@{{ acc.name }} (@{{ acc.type }})</option>
                             </select>
                         </div>
                         <div>
@@ -52,7 +52,7 @@
                 <!-- Stats & Settings -->
                 <div v-if="selectedAccount" class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
                     <div class="bg-gray-800 p-6 rounded-lg shadow-lg border border-gray-700">
-                        <h3 class="text-xl font-bold text-white mb-4">Next Cycle Settings ({{ targetYear }})</h3>
+                        <h3 class="text-xl font-bold text-white mb-4">Next Cycle Settings (@{{ targetYear }})</h3>
                         <div class="grid grid-cols-2 gap-4">
                             <div>
                                 <label class="block text-sm text-gray-400 mb-1">Next Yearly Price</label>
@@ -78,7 +78,7 @@
                             </div>
                             <div class="bg-gray-700 p-3 rounded">
                                 <div class="text-gray-400 text-sm">Occupied</div>
-                                <div class="text-2xl font-bold text-blue-400">{{ renewals.length }}</div>
+                                <div class="text-2xl font-bold text-blue-400">@{{ renewals.length }}</div>
                             </div>
                         </div>
                     </div>
@@ -105,19 +105,19 @@
                         </thead>
                         <tbody class="divide-y divide-gray-700">
                             <tr v-for="item in renewals" :key="item.id" class="hover:bg-gray-700">
-                                <td class="px-4 py-3">{{ item.user_email }}</td>
-                                <td class="px-4 py-3">{{ item.sub_account_id || '-' }}</td>
-                                <td class="px-4 py-3">{{ item.sub_account_pin || '-' }}</td>
-                                <td class="px-4 py-3">{{ item.price }}</td>
+                                <td class="px-4 py-3">@{{ item.user_email }}</td>
+                                <td class="px-4 py-3">@{{ item.sub_account_id || '-' }}</td>
+                                <td class="px-4 py-3">@{{ item.sub_account_pin || '-' }}</td>
+                                <td class="px-4 py-3">@{{ item.price }}</td>
                                 <td class="px-4 py-3">
                                     <span :class="item.is_paid ? 'bg-green-900 text-green-300' : 'bg-red-900 text-red-300'" class="px-2 py-1 rounded text-xs">
-                                        {{ item.is_paid ? 'PAID' : 'UNPAID' }}
+                                        @{{ item.is_paid ? 'PAID' : 'UNPAID' }}
                                     </span>
                                 </td>
                                 <td class="px-4 py-3 text-right space-x-2">
                                     <button @click="showReceipt(item)" class="text-yellow-400 hover:text-yellow-300">Receipt</button>
                                     <button @click="togglePaid(item)" class="text-blue-400 hover:text-blue-300">
-                                        {{ item.is_paid ? 'Mark Unpaid' : 'Mark Paid' }}
+                                        @{{ item.is_paid ? 'Mark Unpaid' : 'Mark Paid' }}
                                     </button>
                                     <button @click="editRenewal(item)" class="text-gray-400 hover:text-white">Edit</button>
                                     <button @click="deleteRenewal(item.id)" class="text-red-400 hover:text-red-300">Remove</button>
@@ -134,7 +134,7 @@
             <!-- Add/Edit Modal -->
             <div v-if="showModal" class="fixed inset-0 modal flex items-center justify-center p-4 z-50">
                 <div class="bg-gray-800 rounded-lg w-full max-w-md p-6 border border-gray-700">
-                    <h2 class="text-xl font-bold text-white mb-4">{{ editingItem ? 'Edit Renewal' : 'Add Renewal User' }}</h2>
+                    <h2 class="text-xl font-bold text-white mb-4">@{{ editingItem ? 'Edit Renewal' : 'Add Renewal User' }}</h2>
                     <div class="space-y-4">
                         <div>
                             <label class="block text-sm text-gray-400 mb-1">User Email</label>
@@ -179,26 +179,26 @@
                     <div class="space-y-4 mb-8">
                         <div class="flex justify-between">
                             <span class="text-gray-600">User</span>
-                            <span class="font-bold">{{ receiptItem.user_email }}</span>
+                            <span class="font-bold">@{{ receiptItem.user_email }}</span>
                         </div>
                         <div class="flex justify-between">
                             <span class="text-gray-600">Cycle</span>
-                            <span class="font-bold">{{ targetYear }}</span>
+                            <span class="font-bold">@{{ targetYear }}</span>
                         </div>
                         <div class="flex justify-between">
                             <span class="text-gray-600">Profile</span>
-                            <span class="font-bold">{{ receiptItem.sub_account_id || '-' }}</span>
+                            <span class="font-bold">@{{ receiptItem.sub_account_id || '-' }}</span>
                         </div>
                         <div class="border-t border-gray-200 my-2 pt-2 flex justify-between items-center">
                             <span class="text-lg font-bold">Total Due</span>
-                            <span class="text-2xl font-bold text-blue-600">{{ receiptItem.price }}</span>
+                            <span class="text-2xl font-bold text-blue-600">@{{ receiptItem.price }}</span>
                         </div>
                     </div>
 
                     <div class="text-center">
                         <div class="inline-block px-4 py-1 rounded-full text-sm font-bold uppercase tracking-wide"
                              :class="receiptItem.is_paid ? 'bg-green-100 text-green-800 border border-green-200' : 'bg-red-100 text-red-800 border border-red-200'">
-                            {{ receiptItem.is_paid ? 'PAID' : 'UNPAID' }}
+                            @{{ receiptItem.is_paid ? 'PAID' : 'UNPAID' }}
                         </div>
                         <p class="text-xs text-gray-400 mt-4">Generated by V2Board OTT System</p>
                     </div>

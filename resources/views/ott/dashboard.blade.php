@@ -74,7 +74,7 @@
             <!-- Account Modal -->
             <div v-if="showAccountModal" class="fixed inset-0 modal flex items-center justify-center p-4 z-50">
                 <div class="bg-gray-800 rounded-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto p-6 border border-gray-700">
-                    <h2 class="text-2xl font-bold text-white mb-6">{{ editingAccount ? 'Edit Account' : 'New Account' }}</h2>
+                    <h2 class="text-2xl font-bold text-white mb-6">@{{ editingAccount ? 'Edit Account' : 'New Account' }}</h2>
                     
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div class="col-span-2">
@@ -209,11 +209,11 @@
                             </thead>
                             <tbody class="divide-y divide-gray-700">
                                 <tr v-for="user in accountUsers" :key="user.id" class="hover:bg-gray-700">
-                                    <td class="px-4 py-3">{{ user.user_email }}</td>
-                                    <td class="px-4 py-3">{{ user.sub_account_id || '-' }}</td>
-                                    <td class="px-4 py-3">{{ user.sub_account_pin || '-' }}</td>
+                                    <td class="px-4 py-3">@{{ user.user_email }}</td>
+                                    <td class="px-4 py-3">@{{ user.sub_account_id || '-' }}</td>
+                                    <td class="px-4 py-3">@{{ user.sub_account_pin || '-' }}</td>
                                     <td class="px-4 py-3" :class="isExpired(user.expired_at) ? 'text-red-400' : 'text-green-400'">
-                                        {{ formatDate(user.expired_at) }}
+                                        @{{ formatDate(user.expired_at) }}
                                     </td>
                                     <td class="px-4 py-3 text-right space-x-2">
                                         <button @click="editUser(user)" class="text-blue-400 hover:text-blue-300">Edit</button>
