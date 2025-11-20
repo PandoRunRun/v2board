@@ -39,11 +39,26 @@ class OttController extends Controller
         $subject = $request->input('subject');
         $content = $request->input('content'); // Body or Raw Content
 
+        // 调试：记录关键参数
+        @file_put_contents(storage_path('logs/webhook_debug.log'), 
+            "=== Step 1: 参数提取 ===\n" .
+            "Sender: $sender\n" .
+            "Recipient: $recipient\n" .
+            "Subject: $subject\n" .
+            "Content length: " . strlen($content) . "\n\n",
+            FILE_APPEND | LOCK_EX
+        );
+
         // Find matching account
         // 1. Match recipient (username or recipient_filter)
         // 2. Match sender (sender_filter)
         
         $accounts = OttAccount::where('is_active', 1)->get();
+        @file_put_contents(storage_path('logs/webhook_debug.log'), 
+            "=== Step 2: 账号查询 ===\n" .
+            "Active accounts count: " . $accounts->count() . "\n",
+            FILE_APPEND | LOCK_EX
+        );
         $matchedAccount = null;
 
         foreach ($accounts as $account) {
@@ -76,17 +91,39 @@ class OttController extends Controller
         }
 
         if (!$matchedAccount) {
-            \App\Models\OttLog::create([
-                'type' => 'capture_fail',
-                'status' => false,
-                'message' => 'No matching account found',
-                'data' => ['recipient' => $recipient, 'sender' => $sender, 'subject' => $subject]
-            ]);
+            @file_put_contents(storage_path('logs/webhook_debug.log'), 
+                "=== Step 3: 账号匹配失败 ===\n" .
+                "No matching account found\n" .
+                "Recipient: $recipient\n" .
+                "Sender: $sender\n\n",
+                FILE_APPEND | LOCK_EX
+            );
+            try {
+                \App\Models\OttLog::create([
+                    'type' => 'capture_fail',
+                    'status' => false,
+                    'message' => 'No matching account found',
+                    'data' => ['recipient' => $recipient, 'sender' => $sender, 'subject' => $subject]
+                ]);
+            } catch (\Exception $e) {
+                @file_put_contents(storage_path('logs/webhook_debug.log'), 
+                    "=== Step 3.1: 日志创建失败 ===\n" .
+                    "Error: " . $e->getMessage() . "\n\n",
+                    FILE_APPEND | LOCK_EX
+                );
+            }
             return response([
                 'data' => false,
                 'message' => 'No matching account found'
             ]);
         }
+        
+        @file_put_contents(storage_path('logs/webhook_debug.log'), 
+            "=== Step 3: 账号匹配成功 ===\n" .
+            "Account ID: " . $matchedAccount->id . "\n" .
+            "Account name: " . ($matchedAccount->name ?? 'N/A') . "\n\n",
+            FILE_APPEND | LOCK_EX
+        );
 
         // Check Ignore Regex
         if ($matchedAccount->ignore_regex) {
@@ -206,6 +243,13 @@ class OttController extends Controller
             }
         }
 
+        @file_put_contents(storage_path('logs/webhook_debug.log'), 
+            "=== Step 4: 准备创建消息 ===\n" .
+            "Final content: " . substr($finalContent, 0, 100) . "\n" .
+            "Regex extraction success: " . ($regexExtractionResult['extraction_success'] ? 'true' : 'false') . "\n\n",
+            FILE_APPEND | LOCK_EX
+        );
+
         try {
             $message = OttMessage::create([
                 'account_id' => $matchedAccount->id,
@@ -213,6 +257,12 @@ class OttController extends Controller
                 'content' => $finalContent,
                 'received_at' => time()
             ]);
+            
+            @file_put_contents(storage_path('logs/webhook_debug.log'), 
+                "=== Step 5: 消息创建成功 ===\n" .
+                "Message ID: " . $message->id . "\n\n",
+                FILE_APPEND | LOCK_EX
+            );
 
             \App\Models\OttLog::create([
                 'account_id' => $matchedAccount->id,
@@ -235,10 +285,23 @@ class OttController extends Controller
                 \App\Models\OttLog::where('created_at', '<', now()->subDays(30))->delete();
             }
 
+            @file_put_contents(storage_path('logs/webhook_debug.log'), 
+                "=== Step 6: 日志创建成功 ===\n" .
+                "Returning success\n\n",
+                FILE_APPEND | LOCK_EX
+            );
+
             return response([
                 'data' => true
             ]);
         } catch (\Exception $e) {
+            @file_put_contents(storage_path('logs/webhook_debug.log'), 
+                "=== Step 5/6: 异常捕获 ===\n" .
+                "Exception: " . $e->getMessage() . "\n" .
+                "File: " . $e->getFile() . ":" . $e->getLine() . "\n" .
+                "Trace: " . substr($e->getTraceAsString(), 0, 500) . "\n\n",
+                FILE_APPEND | LOCK_EX
+            );
             // 确保即使日志创建失败，webhook 也返回成功，避免 CF Worker 重试
             try {
                 \App\Models\OttLog::create([
