@@ -218,8 +218,7 @@ class OttController extends Controller
             }
 
             return response([
-                'data' => true,
-                'message_id' => $message->id
+                'data' => true
             ]);
         } catch (\Exception $e) {
             // 确保即使日志创建失败，webhook 也返回成功，避免 CF Worker 重试
