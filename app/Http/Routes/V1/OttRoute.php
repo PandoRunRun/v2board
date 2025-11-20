@@ -16,7 +16,7 @@ class OttRoute
             $router->post('/account/drop', 'V1\\Admin\\OttController@dropAccount');
             $router->get('/account/fetch', 'V1\\Admin\\OttController@fetchAccount');
             $router->get('/user/fetch', 'V1\\Admin\\OttController@fetchUsers');
-            $router->post('/user/bind', 'V1\\Admin\\OttController@bindUser');
+            $router->post('/user/bind', 'V1\\Admin\\OttController@bind');
             $router->post('/user/unbind', 'V1\\Admin\\OttController@unbindUser');
             
             // Renewal Routes
