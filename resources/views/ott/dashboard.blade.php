@@ -311,6 +311,7 @@
                     </div>
                 </div>
             </div>
+    </div>
 
     <script>
         const { createApp, ref, onMounted } = Vue;
