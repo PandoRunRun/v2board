@@ -1,15 +1,17 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>OTT 续费管理 - V2Board</title>
+    <title>OTT 续费管理</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
     <style>
         body { background-color: #1a202c; color: #e2e8f0; }
         .modal { background-color: rgba(0, 0, 0, 0.5); }
+        .tab-active { border-bottom: 2px solid #3b82f6; color: #3b82f6; }
+        .tab-inactive { color: #9ca3af; }
     </style>
 </head>
 <body>
@@ -28,179 +30,144 @@
             </div>
 
             <div v-if="token">
-                <!-- Account Selector -->
+                <!-- Global Controls -->
                 <div class="bg-gray-800 p-6 rounded-lg shadow-lg border border-gray-700 mb-6">
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
-                        <div>
-                            <label class="block text-sm text-gray-400 mb-1">选择账号</label>
-                            <select v-model="selectedAccountId" @change="fetchRenewals" class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white">
-                                <option v-for="acc in accounts" :value="acc.id">@{{ acc.name }} (@{{ acc.type }})</option>
-                            </select>
-                        </div>
-                        <div>
+                    <div class="flex items-end gap-4">
+                        <div class="w-32">
                             <label class="block text-sm text-gray-400 mb-1">目标年份</label>
-                            <input v-model="targetYear" type="number" @change="fetchRenewals" class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white">
+                            <input v-model="targetYear" type="number" @change="fetchData" class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white">
                         </div>
-                        <div>
-                            <button @click="importCurrentUsers" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded w-full">
-                                导入当前用户
-                            </button>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Stats & Settings -->
-                <div v-if="selectedAccount" class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                    <div class="bg-gray-800 p-6 rounded-lg shadow-lg border border-gray-700">
-                        <h3 class="text-xl font-bold text-white mb-4">下一周期设置 (@{{ targetYear }})</h3>
-                        <div class="grid grid-cols-2 gap-4">
-                            <div>
-                                <label class="block text-sm text-gray-400 mb-1">下一周期年费</label>
-                                <input v-model="selectedAccount.next_price_yearly" type="number" class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white">
-                            </div>
-                            <div>
-                                <label class="block text-sm text-gray-400 mb-1">下一周期席位数</label>
-                                <input v-model="selectedAccount.next_shared_seats" type="number" class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white">
-                            </div>
-                            <div class="col-span-2">
-                                <button @click="saveAccountSettings" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded w-full">
-                                    保存配置
+                        <div class="flex-grow">
+                            <!-- Tabs -->
+                            <div class="flex space-x-6 border-b border-gray-700">
+                                <button @click="activeTab = 'settings'" :class="activeTab === 'settings' ? 'tab-active' : 'tab-inactive'" class="pb-2 font-medium transition">
+                                    账号配置
+                                </button>
+                                <button @click="activeTab = 'bills'" :class="activeTab === 'bills' ? 'tab-active' : 'tab-inactive'" class="pb-2 font-medium transition">
+                                    账单管理
                                 </button>
                             </div>
                         </div>
                     </div>
-                    <div class="bg-gray-800 p-6 rounded-lg shadow-lg border border-gray-700">
-                        <h3 class="text-xl font-bold text-white mb-4">统计</h3>
-                        <div class="grid grid-cols-2 gap-4 text-center">
-                            <div class="bg-gray-700 p-3 rounded">
-                                <div class="text-gray-400 text-sm">总席位数</div>
-                                <div class="text-2xl font-bold">@{{ selectedAccount.next_shared_seats || 1 }}</div>
+                </div>
+
+                <!-- Tab: Account Settings -->
+                <div v-if="activeTab === 'settings'" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <div v-for="acc in accounts" :key="acc.id" class="bg-gray-800 p-6 rounded-lg shadow-lg border border-gray-700">
+                        <h3 class="text-xl font-bold text-white mb-2">@{{ acc.name }}</h3>
+                        <p class="text-sm text-gray-400 mb-4">@{{ acc.type }}</p>
+                        
+                        <div class="space-y-3">
+                            <div>
+                                <label class="block text-xs text-gray-500 mb-1">下一周期年费</label>
+                                <input v-model="acc.next_price_yearly" type="number" class="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1 text-white text-sm">
                             </div>
-                            <div class="bg-gray-700 p-3 rounded">
-                                <div class="text-gray-400 text-sm">已占用</div>
-                                <div class="text-2xl font-bold text-blue-400">@{{ renewals.length }}</div>
+                            <div>
+                                <label class="block text-xs text-gray-500 mb-1">下一周期席位数</label>
+                                <input v-model="acc.next_shared_seats" type="number" class="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1 text-white text-sm">
+                            </div>
+                            <div class="pt-2">
+                                <button @click="saveAccountSettings(acc)" class="w-full bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded text-sm">
+                                    保存配置
+                                </button>
+                            </div>
+                            <div class="pt-2 border-t border-gray-700">
+                                <button @click="importCurrentUsers(acc)" class="w-full bg-gray-700 hover:bg-gray-600 text-white px-3 py-1.5 rounded text-sm">
+                                    导入当前用户
+                                </button>
                             </div>
                         </div>
                     </div>
                 </div>
 
-                <!-- 续费列表 -->
-                <div v-if="selectedAccount" class="bg-gray-800 rounded-lg shadow-lg border border-gray-700 overflow-hidden">
-                    <div class="p-4 border-b border-gray-700 flex justify-between items-center">
-                        <h3 class="text-lg font-bold text-white">续费列表</h3>
-                        <button @click="openAddModal" class="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded text-sm">
-                            + 添加用户
-                        </button>
-                    </div>
-                    <table class="w-full text-left text-sm text-gray-300">
-                        <thead class="bg-gray-900 text-gray-400 uppercase font-medium">
-                            <tr>
-                                <th class="px-4 py-3">用户邮箱</th>
-                                <th class="px-4 py-3">车位/子账号</th>
-                                <th class="px-4 py-3">PIN</th>
-                                <th class="px-4 py-3">价格</th>
-                                <th class="px-4 py-3">状态</th>
-                                <th class="px-4 py-3 text-right">操作</th>
-                            </tr>
-                        </thead>
-                        <tbody class="divide-y divide-gray-700">
-                            <tr v-for="item in renewals" :key="item.id" class="hover:bg-gray-700">
-                                <td class="px-4 py-3">@{{ item.user_email }}</td>
-                                <td class="px-4 py-3">@{{ item.sub_account_id || '-' }}</td>
-                                <td class="px-4 py-3">@{{ item.sub_account_pin || '-' }}</td>
-                                <td class="px-4 py-3">@{{ item.price }}</td>
-                                <td class="px-4 py-3">
-                                    <span :class="item.is_paid ? 'bg-green-900 text-green-300' : 'bg-red-900 text-red-300'" class="px-2 py-1 rounded text-xs">
-                                        @{{ item.is_paid ? '已付款' : '未付款' }}
-                                    </span>
-                                </td>
-                                <td class="px-4 py-3 text-right space-x-2">
-                                    <button @click="showReceipt(item)" class="text-yellow-400 hover:text-yellow-300">收据</button>
-                                    <button @click="togglePaid(item)" class="text-blue-400 hover:text-blue-300">
-                                        @{{ item.is_paid ? '标记未付款' : '标记已付款' }}
-                                    </button>
-                                    <button @click="editRenewal(item)" class="text-gray-400 hover:text-white">编辑</button>
-                                    <button @click="deleteRenewal(item.id)" class="text-red-400 hover:text-red-300">移除</button>
-                                </td>
-                            </tr>
-                            <tr v-if="renewals.length === 0">
-                                <td colspan="6" class="px-4 py-6 text-center text-gray-500">本年度暂无续费记录。</td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-
-            <!-- Add/Edit Modal -->
-            <div v-if="showModal" class="fixed inset-0 modal flex items-center justify-center p-4 z-50">
-                <div class="bg-gray-800 rounded-lg w-full max-w-md p-6 border border-gray-700">
-                    <h2 class="text-xl font-bold text-white mb-4">@{{ editingItem ? '编辑续费' : '添加续费用户' }}</h2>
-                    <div class="space-y-4">
-                        <div>
-                            <label class="block text-sm text-gray-400 mb-1">用户邮箱</label>
-                            <input v-model="form.user_email" :disabled="!!editingItem" class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white">
-                        </div>
-                        <div>
-                            <label class="block text-sm text-gray-400 mb-1">价格</label>
-                            <input v-model="form.price" type="number" step="0.01" class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white">
-                        </div>
-                        <div class="grid grid-cols-2 gap-4">
-                            <div>
-                                <label class="block text-sm text-gray-400 mb-1">车位/子账号</label>
-                                <input v-model="form.sub_account_id" class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white">
-                            </div>
-                            <div>
-                                <label class="block text-sm text-gray-400 mb-1">PIN</label>
-                                <input v-model="form.sub_account_pin" class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white">
+                <!-- Tab: Bills Management -->
+                <div v-if="activeTab === 'bills'">
+                    <div class="bg-gray-800 rounded-lg shadow-lg border border-gray-700 overflow-hidden">
+                        <div class="p-4 border-b border-gray-700 flex justify-between items-center">
+                            <h3 class="text-lg font-bold text-white">用户账单列表 (@{{ targetYear }})</h3>
+                            <div class="text-sm text-gray-400">
+                                总计应收: <span class="text-white font-bold">@{{ totalReceivable }}</span> | 
+                                已收: <span class="text-green-400 font-bold">@{{ totalReceived }}</span>
                             </div>
                         </div>
-                        <div class="flex items-center space-x-2">
-                            <input type="checkbox" v-model="form.is_paid" class="form-checkbox text-green-600">
-                            <span class="text-white">已付款</span>
-                        </div>
-                    </div>
-                    <div class="flex justify-end space-x-4 mt-6">
-                        <button @click="showModal = false" class="px-4 py-2 text-gray-400 hover:text-white">取消</button>
-                        <button @click="saveRenewal" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded">保存</button>
+                        <table class="w-full text-left text-sm text-gray-300">
+                            <thead class="bg-gray-900 text-gray-400 uppercase font-medium">
+                                <tr>
+                                    <th class="px-4 py-3">用户邮箱</th>
+                                    <th class="px-4 py-3">订阅项目数</th>
+                                    <th class="px-4 py-3">总金额</th>
+                                    <th class="px-4 py-3">状态</th>
+                                    <th class="px-4 py-3 text-right">操作</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-gray-700">
+                                <tr v-for="user in userBills" :key="user.email" class="hover:bg-gray-700">
+                                    <td class="px-4 py-3 font-medium text-white">@{{ user.email }}</td>
+                                    <td class="px-4 py-3">
+                                        <div class="flex flex-wrap gap-1">
+                                            <span v-for="item in user.items" class="px-1.5 py-0.5 bg-gray-600 rounded text-xs">
+                                                @{{ item.account_name }}
+                                            </span>
+                                        </div>
+                                    </td>
+                                    <td class="px-4 py-3 font-bold text-blue-400">@{{ user.total.toFixed(2) }}</td>
+                                    <td class="px-4 py-3">
+                                        <span :class="user.is_fully_paid ? 'bg-green-900 text-green-300' : 'bg-yellow-900 text-yellow-300'" class="px-2 py-1 rounded text-xs">
+                                            @{{ user.is_fully_paid ? '已结清' : '未结清' }}
+                                        </span>
+                                    </td>
+                                    <td class="px-4 py-3 text-right space-x-2">
+                                        <button @click="showReceipt(user)" class="text-blue-400 hover:text-blue-300">查看小票</button>
+                                    </td>
+                                </tr>
+                                <tr v-if="userBills.length === 0">
+                                    <td colspan="5" class="px-4 py-6 text-center text-gray-500">暂无账单数据。</td>
+                                </tr>
+                            </tbody>
+                        </table>
                     </div>
                 </div>
             </div>
 
             <!-- Receipt Modal -->
             <div v-if="showReceiptModal" class="fixed inset-0 modal flex items-center justify-center p-4 z-50">
-                <div class="bg-white text-gray-900 rounded-lg w-full max-w-sm p-8 shadow-2xl relative">
+                <div class="bg-white text-gray-900 rounded-lg w-full max-w-md p-8 shadow-2xl relative">
                     <button @click="showReceiptModal = false" class="absolute top-2 right-2 text-gray-400 hover:text-gray-600">✕</button>
                     
                     <div class="text-center border-b-2 border-dashed border-gray-300 pb-6 mb-6">
-                        <h2 class="text-2xl font-bold uppercase tracking-widest mb-1">续费收据</h2>
-                        <p class="text-sm text-gray-500">@{{ selectedAccount ? selectedAccount.name : '' }}</p>
+                        <h2 class="text-2xl font-bold uppercase tracking-widest mb-1">续费账单</h2>
+                        <p class="text-sm text-gray-500">年份: @{{ targetYear }}</p>
                     </div>
 
-                    <div class="space-y-4 mb-8">
-                        <div class="flex justify-between">
-                            <span class="text-gray-600">用户</span>
-                            <span class="font-bold">@{{ receiptItem.user_email }}</span>
-                        </div>
-                        <div class="flex justify-between">
-                            <span class="text-gray-600">周期</span>
-                            <span class="font-bold">@{{ targetYear }}</span>
-                        </div>
-                        <div class="flex justify-between">
-                            <span class="text-gray-600">车位/子账号</span>
-                            <span class="font-bold">@{{ receiptItem.sub_account_id || '-' }}</span>
-                        </div>
-                        <div class="border-t border-gray-200 my-2 pt-2 flex justify-between items-center">
-                            <span class="text-lg font-bold">应付总额</span>
-                            <span class="text-2xl font-bold text-blue-600">@{{ receiptItem.price }}</span>
+                    <div class="mb-6">
+                        <div class="flex justify-between mb-2">
+                            <span class="text-gray-600">用户:</span>
+                            <span class="font-bold">@{{ currentReceiptUser.email }}</span>
                         </div>
                     </div>
 
-                    <div class="text-center">
-                        <div class="inline-block px-4 py-1 rounded-full text-sm font-bold uppercase tracking-wide"
-                             :class="receiptItem.is_paid ? 'bg-green-100 text-green-800 border border-green-200' : 'bg-red-100 text-red-800 border border-red-200'">
-                            @{{ receiptItem.is_paid ? '已付款' : '未付款' }}
+                    <div class="space-y-3 mb-6">
+                        <div v-for="item in currentReceiptUser.items" :key="item.id" class="flex justify-between items-center text-sm">
+                            <div>
+                                <div class="font-bold">@{{ item.account_name }}</div>
+                                <div class="text-xs text-gray-500">@{{ item.sub_account_id || '标准位' }}</div>
+                            </div>
+                            <div class="text-right">
+                                <div>@{{ item.price }}</div>
+                                <button @click="togglePaid(item)" class="text-xs underline" :class="item.is_paid ? 'text-green-600' : 'text-red-500'">
+                                    @{{ item.is_paid ? '已付' : '未付' }}
+                                </button>
+                            </div>
                         </div>
-                        <p class="text-xs text-gray-400 mt-4">由 V2Board OTT 系统生成</p>
+                    </div>
+
+                    <div class="border-t border-gray-200 pt-4 flex justify-between items-center">
+                        <span class="text-lg font-bold">总计应付</span>
+                        <span class="text-2xl font-bold text-blue-600">@{{ currentReceiptUser.total.toFixed(2) }}</span>
+                    </div>
+                    
+                    <div class="mt-2 text-right text-sm" :class="currentReceiptUser.is_fully_paid ? 'text-green-600' : 'text-red-500'">
+                        (@{{ currentReceiptUser.is_fully_paid ? '已全部结清' : '尚未结清' }})
                     </div>
                 </div>
             </div>
@@ -208,44 +175,24 @@
     </div>
 
     <script>
-        const { createApp, ref, computed, onMounted, watch } = Vue;
+        const { createApp, ref, computed, onMounted } = Vue;
 
         createApp({
             setup() {
                 const token = ref(null);
-                const accounts = ref([]);
-                const selectedAccountId = ref(null);
+                const activeTab = ref('settings');
                 const targetYear = ref(new Date().getFullYear() + 1);
-                const renewals = ref([]);
-                const showModal = ref(false);
-                const showReceiptModal = ref(false);
-                const editingItem = ref(null);
-                const receiptItem = ref({});
+                const accounts = ref([]);
+                const allRenewals = ref([]);
                 
-                const form = ref({
-                    user_email: '', price: '', is_paid: false, sub_account_id: '', sub_account_pin: ''
-                });
+                const showReceiptModal = ref(false);
+                const currentReceiptUser = ref({});
 
                 const api = axios.create({ baseURL: '/api/v1/admin/ott' });
-
-                const selectedAccount = computed(() => {
-                    return accounts.value.find(a => a.id === selectedAccountId.value);
-                });
-
-                const availableSeats = computed(() => {
-                    if (!selectedAccount.value) return 0;
-                    const total = selectedAccount.value.next_shared_seats || selectedAccount.value.shared_seats || 1;
-                    return total - renewals.value.length;
-                });
-
-                const totalRevenue = computed(() => {
-                    return renewals.value.reduce((sum, item) => sum + parseFloat(item.price), 0).toFixed(2);
-                });
 
                 const findToken = () => {
                     let foundToken = localStorage.getItem('token');
                     if (!foundToken) {
-                        // Try to find any key starting with eyJ
                         for (let i = 0; i < localStorage.length; i++) {
                             const key = localStorage.key(i);
                             const val = localStorage.getItem(key);
@@ -258,97 +205,84 @@
                     return foundToken;
                 };
 
-                const fetchAccounts = async () => {
+                const fetchData = async () => {
                     try {
-                        const res = await api.get('/account/fetch');
-                        accounts.value = res.data.data;
-                        if (accounts.value.length > 0 && !selectedAccountId.value) {
-                            selectedAccountId.value = accounts.value[0].id;
-                            fetchRenewals();
-                        }
-                    } catch (e) { console.error(e); }
-                };
+                        // Fetch accounts
+                        const accRes = await api.get('/account/fetch');
+                        accounts.value = accRes.data.data;
 
-                const fetchRenewals = async () => {
-                    if (!selectedAccountId.value) return;
-                    try {
-                        const res = await api.get('/renewal/fetch', {
-                            params: { account_id: selectedAccountId.value, target_year: targetYear.value }
+                        // Fetch all renewals for the year (no account_id filter)
+                        const renRes = await api.get('/renewal/fetch', {
+                            params: { target_year: targetYear.value }
                         });
-                        renewals.value = res.data.data;
-                    } catch (e) { console.error(e); }
+                        allRenewals.value = renRes.data.data;
+                    } catch (e) {
+                        console.error(e);
+                        alert('数据加载失败');
+                    }
                 };
 
-                const saveAccountSettings = async () => {
-                    if (!selectedAccount.value) return;
+                const userBills = computed(() => {
+                    const bills = {};
+                    allRenewals.value.forEach(item => {
+                        if (!bills[item.user_email]) {
+                            bills[item.user_email] = {
+                                email: item.user_email,
+                                items: [],
+                                total: 0,
+                                paid_total: 0
+                            };
+                        }
+                        bills[item.user_email].items.push(item);
+                        bills[item.user_email].total += parseFloat(item.price);
+                        if (item.is_paid) {
+                            bills[item.user_email].paid_total += parseFloat(item.price);
+                        }
+                    });
+
+                    return Object.values(bills).map(bill => ({
+                        ...bill,
+                        is_fully_paid: bill.total > 0 && bill.paid_total >= bill.total
+                    }));
+                });
+
+                const totalReceivable = computed(() => {
+                    return userBills.value.reduce((sum, user) => sum + user.total, 0).toFixed(2);
+                });
+
+                const totalReceived = computed(() => {
+                    return userBills.value.reduce((sum, user) => sum + user.paid_total, 0).toFixed(2);
+                });
+
+                const saveAccountSettings = async (account) => {
                     try {
-                        await api.post('/account/save', selectedAccount.value);
-                        alert('设置已保存！');
-                    } catch (e) { alert('保存设置失败'); }
+                        await api.post('/account/save', account);
+                        alert('配置已保存');
+                    } catch (e) { alert('保存失败'); }
                 };
 
-                const importCurrentUsers = async () => {
-                    if (!confirm('确定要导入当前用户到 ' + targetYear.value + ' 吗？这将跳过已存在的用户。')) return;
+                const importCurrentUsers = async (account) => {
+                    if (!confirm(`确定要导入 ${account.name} 的当前用户到 ${targetYear.value} 年吗？`)) return;
                     try {
                         await api.post('/renewal/import', {
-                            account_id: selectedAccountId.value,
+                            account_id: account.id,
                             target_year: targetYear.value
                         });
-                        fetchRenewals();
+                        fetchData();
+                        alert('导入成功');
                     } catch (e) { alert('导入失败'); }
                 };
 
-                const openAddModal = () => {
-                    editingItem.value = null;
-                    // Auto-calc price
-                    const acc = selectedAccount.value;
-                    const price = acc.next_price_yearly ? (acc.next_price_yearly / (acc.next_shared_seats || 1)) : 0;
-                    
-                    form.value = {
-                        user_email: '',
-                        price: price.toFixed(2),
-                        is_paid: false,
-                        sub_account_id: '',
-                        sub_account_pin: ''
-                    };
-                    showModal.value = true;
-                };
-
-                const editRenewal = (item) => {
-                    editingItem.value = item;
-                    form.value = { ...item };
-                    showModal.value = true;
-                };
-
-                const saveRenewal = async () => {
-                    try {
-                        await api.post('/renewal/save', {
-                            account_id: selectedAccountId.value,
-                            target_year: targetYear.value,
-                            ...form.value
-                        });
-                        showModal.value = false;
-                        fetchRenewals();
-                    } catch (e) { alert('失败: ' + (e.response && e.response.data && e.response.data.message ? e.response.data.message : e.message)); }
-                };
-
-                const deleteRenewal = async (id) => {
-                    if (!confirm('确定要从续费列表中移除此用户吗？')) return;
-                    try {
-                        await api.post('/renewal/drop', { id });
-                        fetchRenewals();
-                    } catch (e) { alert('删除失败'); }
-                };
-
-                const showReceipt = (item) => {
-                    receiptItem.value = item;
+                const showReceipt = (user) => {
+                    currentReceiptUser.value = user;
                     showReceiptModal.value = true;
                 };
 
                 const togglePaid = async (item) => {
                     try {
                         await api.post('/renewal/save', {
-                            account_id: selectedAccountId.value,
+                            id: item.id, // Assuming save supports update by ID or we send full payload
+                            account_id: item.account_id,
                             target_year: targetYear.value,
                             user_email: item.user_email,
                             price: item.price,
@@ -356,27 +290,41 @@
                             sub_account_id: item.sub_account_id,
                             sub_account_pin: item.sub_account_pin
                         });
-                        fetchRenewals();
-                        // Update receipt if open
-                        if (showReceiptModal.value && receiptItem.value.id === item.id) {
-                            receiptItem.value.is_paid = !item.is_paid;
+                        
+                        // Update local state immediately
+                        const renewal = allRenewals.value.find(r => r.id === item.id);
+                        if (renewal) {
+                            renewal.is_paid = !renewal.is_paid;
                         }
-                    } catch (e) { alert('更新状态失败'); }
+                        // Force re-compute of current user for modal update
+                        // (Since currentReceiptUser is a ref to the computed object, we might need to refresh it)
+                        // Actually, since we modified the source `allRenewals`, the computed `userBills` will update,
+                        // but `currentReceiptUser` holds a reference to the OLD object from the list.
+                        // We need to find the updated user object.
+                        const updatedUser = userBills.value.find(u => u.email === item.user_email);
+                        if (updatedUser) {
+                            currentReceiptUser.value = updatedUser;
+                        }
+
+                    } catch (e) { 
+                        console.error(e);
+                        alert('状态更新失败'); 
+                    }
                 };
 
                 onMounted(() => {
                     token.value = findToken();
                     if (token.value) {
                         api.defaults.headers.common['Authorization'] = token.value;
-                        fetchAccounts();
+                        fetchData();
                     }
                 });
 
                 return {
-                    token, accounts, selectedAccountId, targetYear, renewals, showModal, editingItem, form,
-                    selectedAccount, showReceiptModal, receiptItem,
-                    fetchRenewals, saveAccountSettings, importCurrentUsers,
-                    openAddModal, editRenewal, saveRenewal, deleteRenewal, togglePaid, showReceipt
+                    token, activeTab, targetYear, accounts, 
+                    userBills, totalReceivable, totalReceived,
+                    showReceiptModal, currentReceiptUser,
+                    fetchData, saveAccountSettings, importCurrentUsers, showReceipt, togglePaid
                 };
             }
         }).mount('#app');
