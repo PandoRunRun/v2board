@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\OttAccount;
 use App\Models\OttMessage;
 use App\Models\OttRenewal;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
@@ -15,29 +16,38 @@ class OttController extends Controller
     public function fetchAccount(Request $request)
     {
         try {
-            $user = $request->user;
+            $userArray = $request->user; // decryptAuthData 返回的是数组
+            $userId = $userArray['id'] ?? null;
             
             // Debug: Log user info
             Log::info('OTT fetchAccount - User info', [
-                'user_id' => $user->id ?? null,
-                'is_ott' => $user->is_ott ?? null,
-                'user_email' => $user->email ?? null
+                'user_id' => $userId,
+                'is_ott' => $userArray['is_ott'] ?? null,
+                'user_email' => $userArray['email'] ?? null
             ]);
             
             // Check if user has is_ott field and it's true
-            if (!isset($user->is_ott) || !$user->is_ott) {
+            if (!isset($userArray['is_ott']) || !$userArray['is_ott']) {
                 Log::info('OTT fetchAccount - User is not OTT user', [
-                    'user_id' => $user->id ?? null
+                    'user_id' => $userId
                 ]);
                 return response([
                     'data' => []
                 ]);
             }
 
+            // Load User model to access relationships
+            $user = User::find($userId);
+            if (!$user) {
+                return response([
+                    'data' => []
+                ]);
+            }
+
             // Debug: Check direct query to v2_ott_user table
-            $ottUserCount = \DB::table('v2_ott_user')->where('user_id', $user->id)->count();
+            $ottUserCount = DB::table('v2_ott_user')->where('user_id', $userId)->count();
             Log::info('OTT fetchAccount - Direct query count', [
-                'user_id' => $user->id,
+                'user_id' => $userId,
                 'ott_user_count' => $ottUserCount
             ]);
 
@@ -45,7 +55,7 @@ class OttController extends Controller
             $accounts = $user->ottAccounts()->get();
             
             Log::info('OTT fetchAccount - Accounts loaded', [
-                'user_id' => $user->id,
+                'user_id' => $userId,
                 'accounts_count' => $accounts->count(),
                 'account_ids' => $accounts->pluck('id')->toArray()
             ]);
@@ -56,7 +66,7 @@ class OttController extends Controller
                 // Check if pivot data exists
                 if (!$account->pivot) {
                     Log::warning('OTT fetchAccount - Account without pivot', [
-                        'user_id' => $user->id,
+                        'user_id' => $userId,
                         'account_id' => $account->id
                     ]);
                     continue;
@@ -89,7 +99,7 @@ class OttController extends Controller
             }
 
             Log::info('OTT fetchAccount - Final data count', [
-                'user_id' => $user->id,
+                'user_id' => $userId,
                 'data_count' => count($data)
             ]);
 
@@ -99,7 +109,7 @@ class OttController extends Controller
         } catch (\Exception $e) {
             Log::error('OTT fetchAccount error: ' . $e->getMessage(), [
                 'trace' => $e->getTraceAsString(),
-                'user_id' => $request->user->id ?? null
+                'user_id' => $request->user['id'] ?? null
             ]);
             
             return response([
@@ -110,9 +120,9 @@ class OttController extends Controller
 
     public function fetchRenewal(Request $request)
     {
-        $user = $request->user;
+        $userId = $request->user['id'] ?? null;
         
-        $renewals = OttRenewal::where('user_id', $user->id)
+        $renewals = OttRenewal::where('user_id', $userId)
             ->join('v2_ott_account', 'v2_ott_renewal.account_id', '=', 'v2_ott_account.id')
             ->select(
                 'v2_ott_renewal.*',
@@ -129,11 +139,18 @@ class OttController extends Controller
     public function fetchMessage(Request $request)
     {
         try {
-            $user = $request->user;
+            $userArray = $request->user;
+            $userId = $userArray['id'] ?? null;
             $accountId = $request->input('account_id');
 
-            if (!isset($user->is_ott) || !$user->is_ott) {
+            if (!isset($userArray['is_ott']) || !$userArray['is_ott']) {
                 abort(403, '无权访问');
+            }
+
+            // Load User model to access relationships
+            $user = User::find($userId);
+            if (!$user) {
+                abort(403, '用户不存在');
             }
 
             // Check if user has access to this account and not expired
@@ -177,7 +194,7 @@ class OttController extends Controller
         } catch (\Exception $e) {
             Log::error('OTT fetchMessage error: ' . $e->getMessage(), [
                 'trace' => $e->getTraceAsString(),
-                'user_id' => $request->user->id ?? null,
+                'user_id' => $request->user['id'] ?? null,
                 'account_id' => $request->input('account_id')
             ]);
             
