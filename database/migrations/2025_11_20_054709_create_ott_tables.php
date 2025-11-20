@@ -42,8 +42,8 @@ class CreateOttTables extends Migration
 
         Schema::create('v2_ott_user', function (Blueprint $table) {
             $table->id();
-            $table->integer('user_id');
-            $table->integer('account_id');
+            $table->unsignedInteger('user_id');
+            $table->unsignedBigInteger('account_id');
             $table->string('sub_account_id')->nullable()->comment('Profile Name or ID');
             $table->string('sub_account_pin')->nullable()->comment('Profile PIN');
             $table->integer('expired_at');
@@ -55,8 +55,8 @@ class CreateOttTables extends Migration
 
         Schema::create('v2_ott_renewal', function (Blueprint $table) {
             $table->id();
-            $table->integer('user_id');
-            $table->integer('account_id');
+            $table->unsignedInteger('user_id');
+            $table->unsignedBigInteger('account_id');
             $table->integer('target_year')->comment('Target Renewal Year');
             $table->decimal('price', 10, 2)->comment('Renewal Price Snapshot');
             $table->boolean('is_paid')->default(0);
