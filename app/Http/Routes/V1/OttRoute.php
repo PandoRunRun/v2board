@@ -29,7 +29,7 @@ class OttRoute
 
         $router->group([
             'prefix' => 'user/ott',
-            'middleware' => 'client'
+            'middleware' => 'user'
         ], function ($router) {
             $router->get('/account/fetch', 'V1\\User\\OttController@fetchAccount');
             $router->get('/message/fetch', 'V1\\User\\OttController@fetchMessage');
