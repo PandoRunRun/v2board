@@ -91,9 +91,31 @@ class OttController extends Controller
         $finalContent = $content;
         if ($matchedAccount->subject_regex) {
             if (preg_match($matchedAccount->subject_regex, $content, $matches)) {
-                $finalContent = isset($matches[1]) ? $matches[1] : $matches[0];
+                // Find first non-empty capture group
+                $matchFound = false;
+                for ($i = 1; $i < count($matches); $i++) {
+                    if (!empty($matches[$i])) {
+                        $finalContent = $matches[$i];
+                        $matchFound = true;
+                        break;
+                    }
+                }
+                if (!$matchFound) {
+                    $finalContent = $matches[0];
+                }
             } else if (preg_match($matchedAccount->subject_regex, $subject, $matches)) {
-                 $finalContent = isset($matches[1]) ? $matches[1] : $matches[0];
+                 // Find first non-empty capture group
+                $matchFound = false;
+                for ($i = 1; $i < count($matches); $i++) {
+                    if (!empty($matches[$i])) {
+                        $finalContent = $matches[$i];
+                        $matchFound = true;
+                        break;
+                    }
+                }
+                if (!$matchFound) {
+                    $finalContent = $matches[0];
+                }
             }
         }
 
