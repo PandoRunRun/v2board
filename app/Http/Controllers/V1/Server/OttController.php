@@ -145,18 +145,7 @@ class OttController extends Controller
 
         // Check Ignore Regex
         if ($matchedAccount->ignore_regex) {
-            // 从邮件内容中提取正文部分（排除邮件头）
-            // 邮件头通常以 "Received:" 开始，到第一个空行结束
-            $emailBody = $content;
-            if (preg_match('/\r?\n\r?\n/', $content, $matches, PREG_OFFSET_CAPTURE)) {
-                $headerEndPos = $matches[0][1] + strlen($matches[0][0]);
-                $emailBody = substr($content, $headerEndPos);
-            } elseif (preg_match('/^Received:/m', $content) && preg_match('/(\r?\n\r?\n|$)/', $content, $matches, PREG_OFFSET_CAPTURE)) {
-                // 如果找到了 Received: 但没有明显的空行分隔，尝试查找第一个空行或文件结尾
-                $headerEndPos = $matches[0][1] + strlen($matches[0][0]);
-                $emailBody = substr($content, $headerEndPos);
-            }
-            
+            $emailBody = $this->extractEmailBody($content);
             $cleanIgnoreRegex = $this->cleanRegex($matchedAccount->ignore_regex);
             $subjectMatch = @preg_match($cleanIgnoreRegex, $subject, $subjectMatches);
             // 只在邮件正文中匹配，不在邮件头中匹配
@@ -233,7 +222,10 @@ class OttController extends Controller
             $cleanRegex = $this->cleanRegex($matchedAccount->subject_regex);
             $regexExtractionResult['cleaned_regex'] = $cleanRegex;
 
-            // Test regex on content first
+            // 提取邮件正文（排除邮件头）
+            $emailBody = $this->extractEmailBody($content);
+
+            // Test regex on content first (只在正文中匹配)
             $matchFound = false;
             $matches = [];
             $extractionSource = null;
@@ -245,7 +237,7 @@ class OttController extends Controller
             }, E_WARNING | E_NOTICE);
 
             try {
-                if (@preg_match($cleanRegex, $content, $matches)) {
+                if (@preg_match($cleanRegex, $emailBody, $matches)) {
                     restore_error_handler();
                     // Find first non-empty capture group
                     for ($i = 1; $i < count($matches); $i++) {
@@ -396,6 +388,26 @@ class OttController extends Controller
                 'message' => 'Message processed but log creation failed'
             ]);
         }
+    }
+
+    /**
+     * 从邮件内容中提取正文部分（排除邮件头）
+     * 邮件头通常以 "Received:" 开始，到第一个空行结束
+     */
+    private function extractEmailBody($content)
+    {
+        // 从邮件内容中提取正文部分（排除邮件头）
+        // 邮件头通常以 "Received:" 开始，到第一个空行结束
+        $emailBody = $content;
+        if (preg_match('/\r?\n\r?\n/', $content, $matches, PREG_OFFSET_CAPTURE)) {
+            $headerEndPos = $matches[0][1] + strlen($matches[0][0]);
+            $emailBody = substr($content, $headerEndPos);
+        } elseif (preg_match('/^Received:/m', $content) && preg_match('/(\r?\n\r?\n|$)/', $content, $matches, PREG_OFFSET_CAPTURE)) {
+            // 如果找到了 Received: 但没有明显的空行分隔，尝试查找第一个空行或文件结尾
+            $headerEndPos = $matches[0][1] + strlen($matches[0][0]);
+            $emailBody = substr($content, $headerEndPos);
+        }
+        return $emailBody;
     }
 
     /**
