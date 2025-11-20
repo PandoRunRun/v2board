@@ -11,6 +11,18 @@ class OttController extends Controller
 {
     public function webhook(Request $request)
     {
+        // 最简单的测试：无论token是否正确，先记录请求
+        file_put_contents(storage_path('logs/webhook_debug.log'), 
+            date('Y-m-d H:i:s') . " - Webhook received\n" .
+            "Method: " . $request->method() . "\n" .
+            "Headers: " . json_encode($request->headers->all(), JSON_UNESCAPED_UNICODE) . "\n" .
+            "Body: " . $request->getContent() . "\n" .
+            "Input: " . json_encode($request->all(), JSON_UNESCAPED_UNICODE) . "\n" .
+            "Token: " . ($request->input('token') ?? 'null') . "\n" .
+            "Expected: " . (config('v2board.server_token') ?? 'null') . "\n\n",
+            FILE_APPEND
+        );
+
         $token = $request->input('token');
         if ($token !== config('v2board.server_token')) {
             abort(403, 'Invalid Token');
