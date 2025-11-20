@@ -121,7 +121,7 @@ class OttController extends Controller
             }
         }
 
-        OttMessage::create([
+        $message = OttMessage::create([
             'account_id' => $matchedAccount->id,
             'subject' => $subject,
             'content' => $finalContent,
@@ -133,7 +133,11 @@ class OttController extends Controller
             'type' => 'capture_success',
             'status' => true,
             'message' => 'Message captured',
-            'data' => ['subject' => $subject, 'content_preview' => substr($finalContent, 0, 50)]
+            'data' => [
+                'subject' => $subject,
+                'content_preview' => substr($finalContent, 0, 50),
+                'message_id' => $message->id
+            ]
         ]);
 
         // Cleanup old logs (simple probability based cleanup to avoid heavy load)
@@ -142,7 +146,8 @@ class OttController extends Controller
         }
 
         return response([
-            'data' => true
+            'data' => true,
+            'message_id' => $message->id
         ]);
     }
 
