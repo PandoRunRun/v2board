@@ -265,8 +265,13 @@
                                         </span>
                                     </td>
                                     <td class="px-4 py-3">@{{ log.message }}</td>
-                                    <td class="px-4 py-3 max-w-xs truncate" :title="JSON.stringify(log.data)">
-                                        @{{ log.data ? JSON.stringify(log.data) : '-' }}
+                                    <td class="px-4 py-3 max-w-xs truncate">
+                                        <div v-if="log.data && log.data.content_preview && log.data.content_preview.startsWith('http')">
+                                            <a :href="log.data.content_preview" target="_blank" class="text-blue-400 hover:underline">点击打开链接</a>
+                                        </div>
+                                        <div v-else :title="JSON.stringify(log.data)">
+                                            @{{ log.data ? JSON.stringify(log.data) : '-' }}
+                                        </div>
                                     </td>
                                 </tr>
                                 <tr v-if="accountLogs.length === 0">
