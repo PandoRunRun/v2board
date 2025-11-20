@@ -58,6 +58,12 @@ class OttController extends Controller
         }
 
         if (!$matchedAccount) {
+            \App\Models\OttLog::create([
+                'type' => 'capture_fail',
+                'status' => false,
+                'message' => 'No matching account found',
+                'data' => ['recipient' => $recipient, 'sender' => $sender, 'subject' => $subject]
+            ]);
             return response([
                 'data' => false,
                 'message' => 'No matching account found'
@@ -67,6 +73,13 @@ class OttController extends Controller
         // Check Ignore Regex
         if ($matchedAccount->ignore_regex) {
             if (preg_match($matchedAccount->ignore_regex, $subject) || preg_match($matchedAccount->ignore_regex, $content)) {
+                \App\Models\OttLog::create([
+                    'account_id' => $matchedAccount->id,
+                    'type' => 'capture_ignore',
+                    'status' => true,
+                    'message' => 'Ignored by regex',
+                    'data' => ['subject' => $subject]
+                ]);
                 return response([
                     'data' => true,
                     'message' => 'Ignored by regex'
@@ -90,6 +103,19 @@ class OttController extends Controller
             'content' => $finalContent,
             'received_at' => time()
         ]);
+
+        \App\Models\OttLog::create([
+            'account_id' => $matchedAccount->id,
+            'type' => 'capture_success',
+            'status' => true,
+            'message' => 'Message captured',
+            'data' => ['subject' => $subject, 'content_preview' => substr($finalContent, 0, 50)]
+        ]);
+
+        // Cleanup old logs (simple probability based cleanup to avoid heavy load)
+        if (rand(1, 100) <= 5) {
+            \App\Models\OttLog::where('created_at', '<', now()->subDays(30))->delete();
+        }
 
         return response([
             'data' => true

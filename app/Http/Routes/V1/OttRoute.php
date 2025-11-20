@@ -14,6 +14,7 @@ class OttRoute
         ], function ($router) {
             $router->post('/account/save', 'V1\\Admin\\OttController@saveAccount');
             $router->post('/account/drop', 'V1\\Admin\\OttController@dropAccount');
+            $router->post('/account/logs', 'V1\\Admin\\OttController@fetchLogs');
             $router->get('/account/fetch', 'V1\\Admin\\OttController@fetchAccount');
             $router->get('/user/fetch', 'V1\\Admin\\OttController@fetchUsers');
             $router->post('/user/bind', 'V1\\Admin\\OttController@bind');

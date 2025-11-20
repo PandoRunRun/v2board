@@ -229,7 +229,47 @@
                 </div>
             </div>
         </div>
-    </div>
+            <!-- Logs Modal -->
+            <div v-if="showLogsModal" class="fixed inset-0 modal flex items-center justify-center p-4 z-50">
+                <div class="bg-gray-800 rounded-lg w-full max-w-4xl max-h-[90vh] overflow-y-auto p-6 border border-gray-700">
+                    <div class="flex justify-between items-center mb-6">
+                        <h2 class="text-2xl font-bold text-white">调试日志: @{{ currentAccount ? currentAccount.name : '' }}</h2>
+                        <button @click="showLogsModal = false" class="text-gray-400 hover:text-white">✕</button>
+                    </div>
+
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left text-sm text-gray-300">
+                            <thead class="bg-gray-900 text-gray-400 uppercase font-medium">
+                                <tr>
+                                    <th class="px-4 py-3">时间</th>
+                                    <th class="px-4 py-3">类型</th>
+                                    <th class="px-4 py-3">状态</th>
+                                    <th class="px-4 py-3">消息</th>
+                                    <th class="px-4 py-3">详情</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-gray-700">
+                                <tr v-for="log in accountLogs" :key="log.id" class="hover:bg-gray-700">
+                                    <td class="px-4 py-3 whitespace-nowrap">@{{ new Date(log.created_at).toLocaleString() }}</td>
+                                    <td class="px-4 py-3">@{{ log.type }}</td>
+                                    <td class="px-4 py-3">
+                                        <span :class="log.status ? 'text-green-400' : 'text-red-400'">
+                                            @{{ log.status ? '成功' : '失败/忽略' }}
+                                        </span>
+                                    </td>
+                                    <td class="px-4 py-3">@{{ log.message }}</td>
+                                    <td class="px-4 py-3 max-w-xs truncate" :title="JSON.stringify(log.data)">
+                                        @{{ log.data ? JSON.stringify(log.data) : '-' }}
+                                    </td>
+                                </tr>
+                                <tr v-if="accountLogs.length === 0">
+                                    <td colspan="5" class="px-4 py-6 text-center text-gray-500">暂无日志记录。</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
 
     <script>
         const { createApp, ref, onMounted } = Vue;
@@ -240,16 +280,18 @@
                 const accounts = ref([]);
                 const showAccountModal = ref(false);
                 const showUsersModal = ref(false);
+                const showLogsModal = ref(false);
                 const editingAccount = ref(null);
                 const currentAccount = ref(null);
                 const accountUsers = ref([]);
+                const accountLogs = ref([]);
                 
                 const accountForm = ref({
-                    name: '', type: '', username: '', password: '', 
+                    name: '', type: 'Netflix', username: '', password: '', 
                     has_otp: false, is_shared_credentials: true, is_active: true,
                     sender_filter: '', recipient_filter: '', subject_regex: '',
-                    ignore_regex: '', otp_validity_minutes: 10, group_id: null,
-                    price_monthly: null, price_yearly: null, shared_seats: 1
+                    ignore_regex: '', otp_validity_minutes: 0, group_id: null,
+                    price_monthly: 0, price_yearly: 0, shared_seats: 1
                 });
 
                 const bindForm = ref({
@@ -295,6 +337,16 @@
                     }
                 };
 
+                const fetchAccountLogs = async (accountId) => {
+                    try {
+                        const res = await api.post('/account/logs', { account_id: accountId });
+                        accountLogs.value = res.data.data;
+                    } catch (e) {
+                        console.error(e);
+                        alert('获取日志失败');
+                    }
+                };
+
                 const openAccountModal = (account = null) => {
                     if (account) {
                         editingAccount.value = account;
@@ -302,11 +354,11 @@
                     } else {
                         editingAccount.value = null;
                         accountForm.value = {
-                            name: '', type: '', username: '', password: '', 
+                            name: '', type: 'Netflix', username: '', password: '', 
                             has_otp: false, is_shared_credentials: true, is_active: true,
                             sender_filter: '', recipient_filter: '', subject_regex: '',
-                            ignore_regex: '', otp_validity_minutes: 10, group_id: null,
-                            price_monthly: null, price_yearly: null, shared_seats: 1
+                            ignore_regex: '', otp_validity_minutes: 0, group_id: null,
+                            price_monthly: 0, price_yearly: 0, shared_seats: 1
                         };
                     }
                     showAccountModal.value = true;
@@ -317,6 +369,12 @@
                     bindForm.value = { email: '', account_id: account.id, expired_at: '', sub_account_id: '', sub_account_pin: '' };
                     fetchAccountUsers(account.id);
                     showUsersModal.value = true;
+                };
+
+                const openLogsModal = (account) => {
+                    currentAccount.value = account;
+                    fetchAccountLogs(account.id);
+                    showLogsModal.value = true;
                 };
 
                 const saveAccount = async () => {
@@ -423,9 +481,9 @@
                 });
 
                 return {
-                    token, accounts, showAccountModal, showUsersModal, editingAccount, currentAccount, accountUsers,
+                    token, accounts, showAccountModal, showUsersModal, showLogsModal, editingAccount, currentAccount, accountUsers, accountLogs,
                     accountForm, bindForm,
-                    openAccountModal, openUsersModal, saveAccount, deleteAccount, bindUser, unbindUser, editUser,
+                    openAccountModal, openUsersModal, openLogsModal, saveAccount, deleteAccount, bindUser, unbindUser, editUser,
                     formatDate, isExpired, calculateCost, calculateFormCost
                 };
             }
