@@ -49,7 +49,8 @@ class AuthService
                     'id',
                     'email',
                     'is_admin',
-                    'is_staff'
+                    'is_staff',
+                    'is_ott'
                 ])
                     ->find($data['id']);
                 if (!$user) return false;
