@@ -90,34 +90,101 @@ class OttController extends Controller
 
         // Extract OTP if regex is present
         $finalContent = $content;
+        $regexExtractionResult = [
+            'has_regex' => false,
+            'original_regex' => null,
+            'cleaned_regex' => null,
+            'extraction_method' => 'original_content',
+            'extraction_success' => false,
+            'extracted_content' => null,
+            'failure_reason' => null
+        ];
+
         if ($matchedAccount->subject_regex) {
+            $regexExtractionResult['has_regex'] = true;
+            $regexExtractionResult['original_regex'] = $matchedAccount->subject_regex;
             $cleanRegex = $this->cleanRegex($matchedAccount->subject_regex);
-            if (preg_match($cleanRegex, $content, $matches)) {
-                // Find first non-empty capture group
-                $matchFound = false;
-                for ($i = 1; $i < count($matches); $i++) {
-                    if (!empty($matches[$i])) {
-                        $finalContent = $matches[$i];
+            $regexExtractionResult['cleaned_regex'] = $cleanRegex;
+
+            // Test regex on content first
+            $matchFound = false;
+            $matches = [];
+            $extractionSource = null;
+
+            // Check if regex is valid
+            $regexError = null;
+            set_error_handler(function($errno, $errstr) use (&$regexError) {
+                $regexError = $errstr;
+            }, E_WARNING | E_NOTICE);
+
+            try {
+                if (@preg_match($cleanRegex, $content, $matches)) {
+                    restore_error_handler();
+                    // Find first non-empty capture group
+                    for ($i = 1; $i < count($matches); $i++) {
+                        if (!empty($matches[$i])) {
+                            $finalContent = $matches[$i];
+                            $matchFound = true;
+                            $extractionSource = 'content';
+                            break;
+                        }
+                    }
+                    if (!$matchFound && !empty($matches[0])) {
+                        $finalContent = $matches[0];
                         $matchFound = true;
-                        break;
+                        $extractionSource = 'content';
+                    }
+                } else {
+                    $contentError = $regexError;
+                    $regexError = null;
+                    restore_error_handler();
+                    
+                    if ($contentError) {
+                        $regexExtractionResult['failure_reason'] = '正则表达式格式错误: ' . $contentError;
+                    } else {
+                        // Try matching subject
+                        set_error_handler(function($errno, $errstr) use (&$regexError) {
+                            $regexError = $errstr;
+                        }, E_WARNING | E_NOTICE);
+                        
+                        if (@preg_match($cleanRegex, $subject, $matches)) {
+                            restore_error_handler();
+                            // Find first non-empty capture group
+                            for ($i = 1; $i < count($matches); $i++) {
+                                if (!empty($matches[$i])) {
+                                    $finalContent = $matches[$i];
+                                    $matchFound = true;
+                                    $extractionSource = 'subject';
+                                    break;
+                                }
+                            }
+                            if (!$matchFound && !empty($matches[0])) {
+                                $finalContent = $matches[0];
+                                $matchFound = true;
+                                $extractionSource = 'subject';
+                            }
+                        } else {
+                            restore_error_handler();
+                            if ($regexError) {
+                                $regexExtractionResult['failure_reason'] = '正则表达式格式错误: ' . $regexError;
+                            } else {
+                                $regexExtractionResult['failure_reason'] = '正则表达式在内容和主题中均未匹配';
+                            }
+                        }
                     }
                 }
-                if (!$matchFound) {
-                    $finalContent = $matches[0];
-                }
-            } else if (preg_match($cleanRegex, $subject, $matches)) {
-                 // Find first non-empty capture group
-                $matchFound = false;
-                for ($i = 1; $i < count($matches); $i++) {
-                    if (!empty($matches[$i])) {
-                        $finalContent = $matches[$i];
-                        $matchFound = true;
-                        break;
-                    }
-                }
-                if (!$matchFound) {
-                    $finalContent = $matches[0];
-                }
+            } catch (\Exception $e) {
+                restore_error_handler();
+                $regexExtractionResult['failure_reason'] = '正则表达式处理异常: ' . $e->getMessage();
+            }
+
+            if ($matchFound) {
+                $regexExtractionResult['extraction_method'] = 'regex_' . $extractionSource;
+                $regexExtractionResult['extraction_success'] = true;
+                $regexExtractionResult['extracted_content'] = $finalContent;
+            } else {
+                $regexExtractionResult['extraction_method'] = 'regex_failed';
+                // Keep original content as fallback
             }
         }
 
@@ -130,14 +197,18 @@ class OttController extends Controller
 
         \App\Models\OttLog::create([
             'account_id' => $matchedAccount->id,
-            'type' => 'capture_success',
-            'status' => true,
-            'message' => 'Message captured',
-            'data' => [
+            'type' => $regexExtractionResult['extraction_success'] || !$regexExtractionResult['has_regex'] ? 'capture_success' : 'capture_fail',
+            'status' => $regexExtractionResult['extraction_success'] || !$regexExtractionResult['has_regex'],
+            'message' => $regexExtractionResult['has_regex'] 
+                ? ($regexExtractionResult['extraction_success'] 
+                    ? 'OTP提取成功 (通过正则表达式: ' . $regexExtractionResult['extraction_method'] . ')'
+                    : 'OTP提取失败: ' . ($regexExtractionResult['failure_reason'] ?? '未知原因'))
+                : 'Message captured (未使用正则表达式)',
+            'data' => array_merge([
                 'subject' => $subject,
                 'content_preview' => substr($finalContent, 0, 50),
                 'message_id' => $message->id
-            ]
+            ], $regexExtractionResult)
         ]);
 
         // Cleanup old logs (simple probability based cleanup to avoid heavy load)
