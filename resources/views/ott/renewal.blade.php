@@ -173,7 +173,7 @@
                     
                     <div class="text-center border-b-2 border-dashed border-gray-300 pb-6 mb-6">
                         <h2 class="text-2xl font-bold uppercase tracking-widest mb-1">Renewal Receipt</h2>
-                        <p class="text-sm text-gray-500">{{ selectedAccount?.name }}</p>
+                        <p class="text-sm text-gray-500">{{ selectedAccount ? selectedAccount.name : '' }}</p>
                     </div>
 
                     <div class="space-y-4 mb-8">
@@ -329,7 +329,7 @@
                         });
                         showModal.value = false;
                         fetchRenewals();
-                    } catch (e) { alert('Failed: ' + (e.response?.data?.message || e.message)); }
+                    } catch (e) { alert('Failed: ' + (e.response && e.response.data && e.response.data.message ? e.response.data.message : e.message)); }
                 };
 
                 const deleteRenewal = async (id) => {
