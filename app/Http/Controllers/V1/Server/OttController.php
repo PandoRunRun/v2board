@@ -146,15 +146,13 @@ class OttController extends Controller
         // Check Ignore Regex
         if ($matchedAccount->ignore_regex) {
             $emailBody = $this->extractEmailBody($content);
-            $cleanIgnoreRegex = $this->cleanRegex($matchedAccount->ignore_regex);
-            $subjectMatch = @preg_match($cleanIgnoreRegex, $subject, $subjectMatches);
+            $subjectMatch = @preg_match($matchedAccount->ignore_regex, $subject, $subjectMatches);
             // 只在邮件正文中匹配，不在邮件头中匹配
-            $contentMatch = @preg_match($cleanIgnoreRegex, $emailBody, $contentMatches);
+            $contentMatch = @preg_match($matchedAccount->ignore_regex, $emailBody, $contentMatches);
             
             @file_put_contents(storage_path('logs/webhook_debug.log'), 
                 "=== Step 3.1: Ignore Regex 检查 ===\n" .
-                "Original regex: " . $matchedAccount->ignore_regex . "\n" .
-                "Cleaned regex: " . $cleanIgnoreRegex . "\n" .
+                "Regex: " . $matchedAccount->ignore_regex . "\n" .
                 "Email body length: " . strlen($emailBody) . " (original: " . strlen($content) . ")\n" .
                 "Subject match: " . ($subjectMatch ? 'YES' : 'NO') . "\n" .
                 "Content match: " . ($contentMatch ? 'YES' : 'NO') . "\n\n",
@@ -183,7 +181,6 @@ class OttController extends Controller
                     'data' => [
                         'subject' => $subject,
                         'ignore_regex' => $matchedAccount->ignore_regex,
-                        'cleaned_regex' => $cleanIgnoreRegex,
                         'match_source' => $matchSource,
                         'matched_text' => $matchText,
                         'match_details' => $matchDetails
@@ -209,7 +206,6 @@ class OttController extends Controller
         $regexExtractionResult = [
             'has_regex' => false,
             'original_regex' => null,
-            'cleaned_regex' => null,
             'extraction_method' => 'original_content',
             'extraction_success' => false,
             'extracted_content' => null,
@@ -219,8 +215,6 @@ class OttController extends Controller
         if ($matchedAccount->subject_regex) {
             $regexExtractionResult['has_regex'] = true;
             $regexExtractionResult['original_regex'] = $matchedAccount->subject_regex;
-            $cleanRegex = $this->cleanRegex($matchedAccount->subject_regex);
-            $regexExtractionResult['cleaned_regex'] = $cleanRegex;
 
             // 提取邮件正文（排除邮件头）
             $emailBody = $this->extractEmailBody($content);
@@ -237,7 +231,7 @@ class OttController extends Controller
             }, E_WARNING | E_NOTICE);
 
             try {
-                if (@preg_match($cleanRegex, $emailBody, $matches)) {
+                if (@preg_match($matchedAccount->subject_regex, $emailBody, $matches)) {
                     restore_error_handler();
                     // Find first non-empty capture group
                     for ($i = 1; $i < count($matches); $i++) {
@@ -266,7 +260,7 @@ class OttController extends Controller
                             $regexError = $errstr;
                         }, E_WARNING | E_NOTICE);
                         
-                        if (@preg_match($cleanRegex, $subject, $matches)) {
+                        if (@preg_match($matchedAccount->subject_regex, $subject, $matches)) {
                             restore_error_handler();
                             // Find first non-empty capture group
                             for ($i = 1; $i < count($matches); $i++) {
@@ -410,48 +404,4 @@ class OttController extends Controller
         return $emailBody;
     }
 
-    /**
-     * 清理正则表达式格式
-     * 将 JavaScript 风格的正则表达式（如 /pattern/is）转换为 PHP 格式
-     */
-    private function cleanRegex($regex)
-    {
-        if (empty($regex)) {
-            return $regex;
-        }
-
-        $regex = trim($regex);
-        
-        // 如果正则表达式包含分隔符 /.../，移除它们
-        if (preg_match('#^/(.*)/([imsxADSUXuJ]*)$#', $regex, $m)) {
-            $pattern = $m[1];
-            $flags = $m[2] ?? '';
-            
-            $phpFlags = '';
-            
-            // 处理 i 标志（大小写不敏感）
-            if (strpos($flags, 'i') !== false) {
-                $phpFlags .= 'i';
-            }
-            
-            // 处理 s 标志（让 . 匹配换行）
-            if (strpos($flags, 's') !== false) {
-                $pattern = '(?s)' . $pattern;
-            }
-            
-            // 处理 m 标志（多行模式）
-            if (strpos($flags, 'm') !== false) {
-                $phpFlags .= 'm';
-            }
-            
-            // 修复转义：将 \/ 转换为 /
-            $pattern = str_replace('\/', '/', $pattern);
-            
-            // 始终返回带分隔符的 PHP 正则表达式格式
-            return '/' . $pattern . '/' . $phpFlags;
-        }
-
-        // 如果没有分隔符，仍然修复可能的转义问题
-        return str_replace('\/', '/', $regex);
-    }
 }
