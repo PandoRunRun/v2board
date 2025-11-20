@@ -15,7 +15,7 @@ class OttUser extends Model
         'expired_at'
     ];
     protected $casts = [
-        'expired_at' => 'timestamp',
+        'expired_at' => 'integer',
         'created_at' => 'timestamp',
         'updated_at' => 'timestamp'
     ];
