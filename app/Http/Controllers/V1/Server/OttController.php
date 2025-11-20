@@ -243,7 +243,7 @@ class OttController extends Controller
 
     /**
      * 清理正则表达式格式
-     * 将 JavaScript 风格的正则表达式（如 /pattern/s）转换为 PHP 格式
+     * 将 JavaScript 风格的正则表达式（如 /pattern/is）转换为 PHP 格式
      */
     private function cleanRegex($regex)
     {
@@ -258,13 +258,30 @@ class OttController extends Controller
             $pattern = $m[1];
             $flags = $m[2] ?? '';
             
-            // 如果原来有 s 标志，在模式前添加 (?s) 让 . 匹配换行
+            $phpFlags = '';
+            
+            // 处理 i 标志（大小写不敏感）
+            if (strpos($flags, 'i') !== false) {
+                $phpFlags .= 'i';
+            }
+            
+            // 处理 s 标志（让 . 匹配换行）
             if (strpos($flags, 's') !== false) {
                 $pattern = '(?s)' . $pattern;
             }
             
+            // 处理 m 标志（多行模式）
+            if (strpos($flags, 'm') !== false) {
+                $phpFlags .= 'm';
+            }
+            
             // 修复转义：将 \/ 转换为 /
             $pattern = str_replace('\/', '/', $pattern);
+            
+            // 如果有 PHP 标志，在模式后添加分隔符
+            if (!empty($phpFlags)) {
+                return '/' . $pattern . '/' . $phpFlags;
+            }
             
             return $pattern;
         }
