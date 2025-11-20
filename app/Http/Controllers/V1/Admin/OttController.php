@@ -103,18 +103,24 @@ class OttController extends Controller
         if (!$userId && $request->input('email')) {
             $user = User::where('email', $request->input('email'))->first();
             if (!$user) {
-                abort(500, 'User not found');
+                return response([
+                    'message' => 'User not found with email: ' . $request->input('email')
+                ], 404);
             }
             $userId = $user->id;
         }
 
         if (!$userId) {
-            abort(500, 'User ID or Email is required');
+            return response([
+                'message' => 'User ID or Email is required'
+            ], 400);
         }
 
         $account = OttAccount::find($request->input('account_id'));
         if (!$account) {
-            abort(500, 'Account not found');
+            return response([
+                'message' => 'Account not found'
+            ], 404);
         }
 
         // Check if binding exists
