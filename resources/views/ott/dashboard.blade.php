@@ -139,7 +139,7 @@
                             <input v-model="accountForm.shared_seats" type="number" class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white">
                         </div>
                         <div class="flex items-end pb-2">
-                            <span class="text-gray-400 text-sm">Calc Cost/User/Year: <span class="text-yellow-400 font-bold">{{ calculateFormCost() }}</span></span>
+                            <span class="text-gray-400 text-sm">Calc Cost/User/Year: <span class="text-yellow-400 font-bold">@{{ calculateFormCost() }}</span></span>
                         </div>
 
                         <div class="col-span-2 flex gap-6 mt-2 border-t border-gray-700 pt-4">
