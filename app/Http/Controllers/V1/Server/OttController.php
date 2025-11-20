@@ -161,18 +161,29 @@ class OttController extends Controller
             if ($subjectMatch || $contentMatch) {
                 $matchSource = $subjectMatch ? 'subject' : 'content';
                 $matchText = $subjectMatch ? substr($subject, 0, 100) : substr($content, 0, 200);
+                $matchDetails = $subjectMatch ? $subjectMatches : $contentMatches;
+                
+                @file_put_contents(storage_path('logs/webhook_debug.log'), 
+                    "=== Step 3.2: Ignore Regex 匹配详情 ===\n" .
+                    "Match source: $matchSource\n" .
+                    "Matches: " . json_encode($matchDetails, JSON_UNESCAPED_UNICODE) . "\n" .
+                    "First match: " . ($matchDetails[0] ?? 'N/A') . "\n" .
+                    "Matched text: " . substr($matchText, 0, 200) . "\n\n",
+                    FILE_APPEND | LOCK_EX
+                );
                 
                 \App\Models\OttLog::create([
                     'account_id' => $matchedAccount->id,
                     'type' => 'capture_ignore',
                     'status' => true,
-                    'message' => 'Ignored by regex (matched in ' . $matchSource . ')',
+                    'message' => 'Ignored by regex (matched in ' . $matchSource . ': ' . ($matchDetails[0] ?? 'unknown') . ')',
                     'data' => [
                         'subject' => $subject,
                         'ignore_regex' => $matchedAccount->ignore_regex,
                         'cleaned_regex' => $cleanIgnoreRegex,
                         'match_source' => $matchSource,
-                        'matched_text' => $matchText
+                        'matched_text' => $matchText,
+                        'match_details' => $matchDetails
                     ]
                 ]);
                 
