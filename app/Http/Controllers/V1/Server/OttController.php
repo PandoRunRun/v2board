@@ -436,9 +436,9 @@ class OttController extends Controller
      */
     private function extractTextFromMimeMultipart($mimeContent)
     {
-        // 查找 text/plain 部分
-        if (preg_match('/Content-Type:\s*text\/plain[^;]*;\s*charset=([^\s\n]+)[\s\S]*?Content-Transfer-Encoding:\s*quoted-printable[\s\S]*?\n\n([\s\S]*?)(------=_Part_|$)/i', $mimeContent, $matches)) {
-            $textContent = $matches[2];
+        // 查找 text/plain 部分，格式：Content-Type: text/plain; charset=UTF-8\nContent-Transfer-Encoding: quoted-printable\n\n内容
+        if (preg_match('/Content-Type:\s*text\/plain[^\r\n]*[\r\n]+Content-Transfer-Encoding:\s*quoted-printable[\r\n]+[\r\n]+([\s\S]*?)(?:\r?\n------=_Part_|$)/i', $mimeContent, $matches)) {
+            $textContent = $matches[1];
             // 解码 quoted-printable
             $textContent = quoted_printable_decode($textContent);
             // 移除换行符中的等号（quoted-printable的软换行）
@@ -447,7 +447,7 @@ class OttController extends Controller
         }
         
         // 如果没有找到 text/plain，尝试查找第一个不是 text/html 的文本部分
-        if (preg_match('/Content-Type:\s*text\/(?!html)([^\s\n]+)[\s\S]*?Content-Transfer-Encoding:\s*quoted-printable[\s\S]*?\n\n([\s\S]*?)(------=_Part_|$)/i', $mimeContent, $matches)) {
+        if (preg_match('/Content-Type:\s*text\/(?!html)([^\s\r\n]+)[^\r\n]*[\r\n]+Content-Transfer-Encoding:\s*quoted-printable[\r\n]+[\r\n]+([\s\S]*?)(?:\r?\n------=_Part_|$)/i', $mimeContent, $matches)) {
             $textContent = $matches[2];
             $textContent = quoted_printable_decode($textContent);
             $textContent = preg_replace('/=\r?\n/', '', $textContent);
