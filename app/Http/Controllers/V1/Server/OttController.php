@@ -303,6 +303,7 @@ class OttController extends Controller
 
         @file_put_contents(storage_path('logs/webhook_debug.log'), 
             "=== Step 4: 准备创建消息 ===\n" .
+            "Email body (first 500 chars): " . substr($emailBody ?? $content, 0, 500) . "\n" .
             "Final content: " . substr($finalContent, 0, 100) . "\n" .
             "Regex extraction success: " . ($regexExtractionResult['extraction_success'] ? 'true' : 'false') . "\n\n",
             FILE_APPEND | LOCK_EX
