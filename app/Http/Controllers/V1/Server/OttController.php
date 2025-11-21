@@ -34,21 +34,35 @@ class OttController extends Controller
             abort(403, 'Invalid Token');
         }
 
-        $sender = $request->input('sender');
-        $recipient = $request->input('recipient');
+        // 支持两种格式：旧的格式（sender/recipient/content）和新的格式（from/to/subject/body）
+        $sender = $request->input('sender') ?: $request->input('from');
+        $recipient = $request->input('recipient') ?: $request->input('to');
         $subject = $request->input('subject');
-        $content = $request->input('content'); // Body or Raw Content
-
-        // 从邮件内容中提取真实的 From 邮箱（CF Worker 发送的 sender 可能是 Amazon SES 地址）
-        $realSender = $sender;
-        if (preg_match('/^From:\s*(.+)$/mi', $content, $fromMatches)) {
-            $fromHeader = trim($fromMatches[1]);
-            // 提取邮箱地址（可能是 "Name <email@domain.com>" 格式）
-            if (preg_match('/<([^>]+)>/', $fromHeader, $emailMatches)) {
-                $realSender = trim($emailMatches[1]);
-            } elseif (preg_match('/([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/', $fromHeader, $emailMatches)) {
-                $realSender = trim($emailMatches[1]);
+        
+        // 新的格式：直接使用body，不需要解析
+        $body = $request->input('body');
+        if ($body !== null) {
+            // 新格式：直接使用解析好的body
+            $content = $request->input('raw') ?: $body; // 如果有raw保留，否则用body
+            $emailBody = $body; // body已经是纯正文了
+            $realSender = $sender; // from已经是真实发件人了
+        } else {
+            // 旧格式：需要解析
+            $content = $request->input('content');
+            
+            // 从邮件内容中提取真实的 From 邮箱（CF Worker 发送的 sender 可能是 Amazon SES 地址）
+            $realSender = $sender;
+            if (preg_match('/^From:\s*(.+)$/mi', $content, $fromMatches)) {
+                $fromHeader = trim($fromMatches[1]);
+                // 提取邮箱地址（可能是 "Name <email@domain.com>" 格式）
+                if (preg_match('/<([^>]+)>/', $fromHeader, $emailMatches)) {
+                    $realSender = trim($emailMatches[1]);
+                } elseif (preg_match('/([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/', $fromHeader, $emailMatches)) {
+                    $realSender = trim($emailMatches[1]);
+                }
             }
+            
+            $emailBody = $this->extractEmailBody($content);
         }
 
         // 调试：记录关键参数
@@ -145,7 +159,7 @@ class OttController extends Controller
 
         // Check Ignore Regex
         if ($matchedAccount->ignore_regex) {
-            $emailBody = $this->extractEmailBody($content);
+            // emailBody 已经在上面设置好了
             $subjectMatch = @preg_match($matchedAccount->ignore_regex, $subject, $subjectMatches);
             // 只在邮件正文中匹配，不在邮件头中匹配
             $contentMatch = @preg_match($matchedAccount->ignore_regex, $emailBody, $contentMatches);
@@ -216,8 +230,7 @@ class OttController extends Controller
             $regexExtractionResult['has_regex'] = true;
             $regexExtractionResult['original_regex'] = $matchedAccount->subject_regex;
 
-            // 提取邮件正文（排除邮件头）
-            $emailBody = $this->extractEmailBody($content);
+            // emailBody 已经在上面设置好了（新格式直接用body，旧格式已经提取过了）
 
             // Test regex on content first (只在正文中匹配)
             $matchFound = false;
