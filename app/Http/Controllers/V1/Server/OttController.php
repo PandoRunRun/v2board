@@ -74,7 +74,11 @@ class OttController extends Controller
         
         // 如果body是MIME multipart格式，需要解析提取纯文本
         if ($body !== null && strpos($body, '------=_Part_') === 0) {
-            $body = $this->extractTextFromMimeMultipart($body);
+            $extractedBody = $this->extractTextFromMimeMultipart($body);
+            if (!empty($extractedBody)) {
+                $body = $extractedBody;
+                $emailBody = $body; // 更新 emailBody
+            }
         }
         
         // 调试：记录关键参数
@@ -436,21 +440,22 @@ class OttController extends Controller
      */
     private function extractTextFromMimeMultipart($mimeContent)
     {
-        // 查找 text/plain 部分，格式：Content-Type: text/plain; charset=UTF-8\nContent-Transfer-Encoding: quoted-printable\n\n内容
-        if (preg_match('/Content-Type:\s*text\/plain[^\r\n]*[\r\n]+Content-Transfer-Encoding:\s*quoted-printable[\r\n]+[\r\n]+([\s\S]*?)(?:\r?\n------=_Part_|$)/i', $mimeContent, $matches)) {
+        // 查找 text/plain 部分
+        // 格式：Content-Type: text/plain; charset=UTF-8\nContent-Transfer-Encoding: quoted-printable\n\n内容\n------=_Part_
+        if (preg_match('/Content-Type:\s*text\/plain[^\r\n]*\r?\nContent-Transfer-Encoding:\s*quoted-printable\r?\n\r?\n([\s\S]*?)(?:\r?\n------=_Part_|$)/i', $mimeContent, $matches)) {
             $textContent = $matches[1];
-            // 解码 quoted-printable
-            $textContent = quoted_printable_decode($textContent);
             // 移除换行符中的等号（quoted-printable的软换行）
             $textContent = preg_replace('/=\r?\n/', '', $textContent);
+            // 解码 quoted-printable
+            $textContent = quoted_printable_decode($textContent);
             return trim($textContent);
         }
         
         // 如果没有找到 text/plain，尝试查找第一个不是 text/html 的文本部分
-        if (preg_match('/Content-Type:\s*text\/(?!html)([^\s\r\n]+)[^\r\n]*[\r\n]+Content-Transfer-Encoding:\s*quoted-printable[\r\n]+[\r\n]+([\s\S]*?)(?:\r?\n------=_Part_|$)/i', $mimeContent, $matches)) {
+        if (preg_match('/Content-Type:\s*text\/(?!html)([^\s\r\n]+)[^\r\n]*\r?\nContent-Transfer-Encoding:\s*quoted-printable\r?\n\r?\n([\s\S]*?)(?:\r?\n------=_Part_|$)/i', $mimeContent, $matches)) {
             $textContent = $matches[2];
-            $textContent = quoted_printable_decode($textContent);
             $textContent = preg_replace('/=\r?\n/', '', $textContent);
+            $textContent = quoted_printable_decode($textContent);
             return trim($textContent);
         }
         
