@@ -392,17 +392,17 @@ class OttController extends Controller
     private function extractEmailBody($content)
     {
         // 从邮件内容中提取正文部分（排除邮件头）
-        // 邮件头通常以 "Received:" 开始，到第一个空行结束
-        $emailBody = $content;
-        if (preg_match('/\r?\n\r?\n/', $content, $matches, PREG_OFFSET_CAPTURE)) {
+        // 邮件头通常以 "Received:" 开始，到第一个空行（连续两个换行符）结束
+        
+        // 查找第一个连续的两个换行符（空行），这是邮件头和正文的标准分隔符
+        if (preg_match('/\r?\n\s*\r?\n/', $content, $matches, PREG_OFFSET_CAPTURE)) {
             $headerEndPos = $matches[0][1] + strlen($matches[0][0]);
-            $emailBody = substr($content, $headerEndPos);
-        } elseif (preg_match('/^Received:/m', $content) && preg_match('/(\r?\n\r?\n|$)/', $content, $matches, PREG_OFFSET_CAPTURE)) {
-            // 如果找到了 Received: 但没有明显的空行分隔，尝试查找第一个空行或文件结尾
-            $headerEndPos = $matches[0][1] + strlen($matches[0][0]);
-            $emailBody = substr($content, $headerEndPos);
+            return trim(substr($content, $headerEndPos));
         }
-        return $emailBody;
+        
+        // 如果找不到空行，但有 Received: 开头，可能是邮件头没有空行分隔
+        // 这种情况下返回整个内容（让正则去匹配）
+        return $content;
     }
 
 }
