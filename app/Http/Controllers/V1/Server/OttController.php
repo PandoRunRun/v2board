@@ -65,6 +65,18 @@ class OttController extends Controller
             $emailBody = $this->extractEmailBody($content);
         }
 
+        // 解码 subject（可能是 base64 编码）
+        if (preg_match('/=\?UTF-8\?B\?(.+?)\?=/', $subject, $matches)) {
+            $subject = base64_decode($matches[1]);
+        } elseif (preg_match('/=\?UTF-8\?Q\?(.+?)\?=/', $subject, $matches)) {
+            $subject = quoted_printable_decode(str_replace('_', ' ', $matches[1]));
+        }
+        
+        // 如果body是MIME multipart格式，需要解析提取纯文本
+        if ($body !== null && strpos($body, '------=_Part_') === 0) {
+            $body = $this->extractTextFromMimeMultipart($body);
+        }
+        
         // 调试：记录关键参数
         @file_put_contents(storage_path('logs/webhook_debug.log'), 
             "=== Step 1: 参数提取 ===\n" .
@@ -72,7 +84,8 @@ class OttController extends Controller
             "Real Sender: $realSender\n" .
             "Recipient: $recipient\n" .
             "Subject: $subject\n" .
-            "Content length: " . strlen($content) . "\n\n",
+            "Content length: " . strlen($content ?? '') . "\n" .
+            "Body length: " . strlen($emailBody ?? $body ?? '') . "\n\n",
             FILE_APPEND | LOCK_EX
         );
 
@@ -416,6 +429,33 @@ class OttController extends Controller
         // 如果找不到空行，但有 Received: 开头，可能是邮件头没有空行分隔
         // 这种情况下返回整个内容（让正则去匹配）
         return $content;
+    }
+    
+    /**
+     * 从MIME multipart格式中提取纯文本内容
+     */
+    private function extractTextFromMimeMultipart($mimeContent)
+    {
+        // 查找 text/plain 部分
+        if (preg_match('/Content-Type:\s*text\/plain[^;]*;\s*charset=([^\s\n]+)[\s\S]*?Content-Transfer-Encoding:\s*quoted-printable[\s\S]*?\n\n([\s\S]*?)(------=_Part_|$)/i', $mimeContent, $matches)) {
+            $textContent = $matches[2];
+            // 解码 quoted-printable
+            $textContent = quoted_printable_decode($textContent);
+            // 移除换行符中的等号（quoted-printable的软换行）
+            $textContent = preg_replace('/=\r?\n/', '', $textContent);
+            return trim($textContent);
+        }
+        
+        // 如果没有找到 text/plain，尝试查找第一个不是 text/html 的文本部分
+        if (preg_match('/Content-Type:\s*text\/(?!html)([^\s\n]+)[\s\S]*?Content-Transfer-Encoding:\s*quoted-printable[\s\S]*?\n\n([\s\S]*?)(------=_Part_|$)/i', $mimeContent, $matches)) {
+            $textContent = $matches[2];
+            $textContent = quoted_printable_decode($textContent);
+            $textContent = preg_replace('/=\r?\n/', '', $textContent);
+            return trim($textContent);
+        }
+        
+        // 如果都找不到，返回空
+        return '';
     }
 
 }
