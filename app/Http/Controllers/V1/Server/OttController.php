@@ -78,6 +78,13 @@ class OttController extends Controller
             if (!empty($extractedBody)) {
                 $body = $extractedBody;
                 $emailBody = $body; // 更新 emailBody
+            } else {
+                // 如果提取失败，记录调试信息
+                @file_put_contents(storage_path('logs/webhook_debug.log'), 
+                    "=== MIME提取失败 ===\n" .
+                    "Body前500字符: " . substr($body, 0, 500) . "\n\n",
+                    FILE_APPEND | LOCK_EX
+                );
             }
         }
         
