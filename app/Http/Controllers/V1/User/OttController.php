@@ -74,27 +74,52 @@ class OttController extends Controller
 
                 $expiredAt = $account->pivot->expired_at ?? 0;
                 $isExpired = $expiredAt < time();
-                $item = $account->toArray();
+                
+                // 过期：完全不返回该账号信息
+                if ($isExpired) {
+                    continue;
+                }
+                
+                // 只返回用户需要知道的字段，过滤敏感信息
+                $item = [
+                    'id' => $account->id,
+                    'name' => $account->name,
+                    'type' => $account->type,
+                    'has_otp' => $account->has_otp ?? false,
+                    'price_monthly' => $account->price_monthly,
+                    'price_yearly' => $account->price_yearly,
+                    'shared_seats' => $account->shared_seats,
+                    'is_active' => $account->is_active ?? true,
+                    'created_at' => $account->created_at,
+                    'updated_at' => $account->updated_at,
+                ];
 
-                // Add pivot data
+                // 添加用户特定的信息（来自 pivot）
                 $item['expired_at'] = $expiredAt;
                 $item['sub_account_id'] = $account->pivot->sub_account_id ?? null;
                 $item['sub_account_pin'] = $account->pivot->sub_account_pin ?? null;
 
-                // Calculate Cost Per Year Per User
+                // 计算每用户年费
                 $yearlyPrice = $account->price_yearly ? $account->price_yearly : ($account->price_monthly ? ($account->price_monthly * 12) : 0);
                 $seats = $account->shared_seats > 0 ? $account->shared_seats : 1;
                 $item['cost_per_year'] = $seats > 0 ? round($yearlyPrice / $seats, 2) : 0;
 
-                // Mask sensitive data if expired
-                if ($isExpired) {
-                    $item['password'] = '******';
-                    $item['username'] = '******'; // Mask full username if expired
-                    $item['sub_account_pin'] = '******';
-                    $item['status'] = 'expired';
+                // 权限控制：根据 is_shared_credentials 决定是否返回账号密码
+                $isSharedCredentials = $account->is_shared_credentials ?? false;
+                $item['is_shared_credentials'] = $isSharedCredentials;
+                
+                // 未过期：始终返回 username，根据 is_shared_credentials 决定是否返回 password
+                $item['username'] = $account->username;
+                
+                if ($isSharedCredentials) {
+                    // 共享凭证：返回主账号的 password
+                    $item['password'] = $account->password;
                 } else {
-                    $item['status'] = 'active';
+                    // 非共享凭证：不返回 password，前端会提示用户账号不提供密码，仅支持OTP登录
+                    $item['password'] = null;
                 }
+                $item['status'] = 'active';
+                
                 $data[] = $item;
             }
 
@@ -122,10 +147,20 @@ class OttController extends Controller
     {
         $userId = $request->user['id'] ?? null;
         
+        // 只返回当前用户的 renewal 信息，不包含其他用户的敏感数据
         $renewals = OttRenewal::where('user_id', $userId)
             ->join('v2_ott_account', 'v2_ott_renewal.account_id', '=', 'v2_ott_account.id')
             ->select(
-                'v2_ott_renewal.*',
+                'v2_ott_renewal.id',
+                'v2_ott_renewal.account_id',
+                'v2_ott_renewal.user_id',
+                'v2_ott_renewal.target_year',
+                'v2_ott_renewal.price',
+                'v2_ott_renewal.is_paid',
+                'v2_ott_renewal.sub_account_id',
+                'v2_ott_renewal.sub_account_pin',
+                'v2_ott_renewal.created_at',
+                'v2_ott_renewal.updated_at',
                 'v2_ott_account.name as account_name',
                 'v2_ott_account.type as account_type'
             )

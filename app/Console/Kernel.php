@@ -46,7 +46,12 @@ class Kernel extends ConsoleKernel
         
         // ott
         $schedule->command('ott:cleanup')->everyMinute()->runInBackground();
-        $schedule->command('ott:renewal-switch')->yearly()->runInBackground();
+        // 每年1月1日0:00 (GMT+8) 执行renewal switch
+        $schedule->command('ott:renewal-switch')
+            ->yearly()
+            ->at('00:00')
+            ->timezone('Asia/Shanghai')
+            ->runInBackground();
     }
 
     /**
