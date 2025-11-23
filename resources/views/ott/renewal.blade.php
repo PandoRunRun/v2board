@@ -57,6 +57,49 @@
                         <h3 class="text-xl font-bold text-white mb-2">@{{ acc.name }}</h3>
                         <p class="text-sm text-gray-400 mb-4">@{{ acc.type }}</p>
                         
+                        <!-- Statistics -->
+                        <div class="mb-4 p-3 bg-gray-900 rounded border border-gray-700">
+                            <div class="text-xs text-gray-400 mb-2">@{{ targetYear }} 年续费统计</div>
+                            <div class="grid grid-cols-2 gap-2 text-xs">
+                                <div class="flex items-center gap-1">
+                                    <span class="w-2 h-2 rounded-full bg-green-500"></span>
+                                    <span class="text-gray-300">已付款:</span>
+                                    <span class="text-green-400 font-bold">@{{ getAccountStats(acc.id).paid }}</span>
+                                </div>
+                                <div class="flex items-center gap-1">
+                                    <span class="w-2 h-2 rounded-full bg-red-500"></span>
+                                    <span class="text-gray-300">未付款:</span>
+                                    <span class="text-red-400 font-bold">@{{ getAccountStats(acc.id).unpaid }}</span>
+                                </div>
+                                <div class="flex items-center gap-1">
+                                    <span class="w-2 h-2 rounded-full bg-orange-500"></span>
+                                    <span class="text-gray-300">要下车:</span>
+                                    <span class="text-orange-400 font-bold">@{{ getAccountStats(acc.id).dropped }}</span>
+                                </div>
+                                <div class="flex items-center gap-1">
+                                    <span class="w-2 h-2 rounded-full bg-blue-500"></span>
+                                    <span class="text-gray-300">新上车:</span>
+                                    <span class="text-blue-400 font-bold">@{{ getAccountStats(acc.id).new }}</span>
+                                </div>
+                            </div>
+                            <div class="mt-2 pt-2 border-t border-gray-700 text-xs">
+                                <div class="flex justify-between text-gray-400">
+                                    <span>总人数:</span>
+                                    <span class="text-white font-bold">@{{ getAccountStats(acc.id).total }}</span>
+                                </div>
+                                <div class="flex justify-between text-gray-400">
+                                    <span>席位数:</span>
+                                    <span class="text-white font-bold">@{{ acc.next_shared_seats || acc.shared_seats || 1 }}</span>
+                                </div>
+                                <div class="flex justify-between text-gray-400 mt-1">
+                                    <span>状态:</span>
+                                    <span :class="getAccountStats(acc.id).total >= (acc.next_shared_seats || acc.shared_seats || 1) ? 'text-red-400' : 'text-green-400'" class="font-bold">
+                                        @{{ getAccountStats(acc.id).total >= (acc.next_shared_seats || acc.shared_seats || 1) ? '已满员' : '可继续售卖' }}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                        
                         <div class="space-y-3">
                             <div>
                                 <label class="block text-xs text-gray-500 mb-1">下一周期年费</label>
@@ -184,16 +227,29 @@
                     </div>
 
                     <div class="space-y-3 mb-6">
-                        <div v-for="item in currentReceiptUser.items" :key="item.id" class="flex justify-between items-center text-sm">
+                        <div v-for="item in currentReceiptUser.items" :key="item.id" class="flex justify-between items-center text-sm" :class="item.is_dropped ? 'opacity-50' : ''">
                             <div>
-                                <div class="font-bold">@{{ item.account_name }}</div>
+                                <div class="font-bold">
+                                    @{{ item.account_name }}
+                                    <span v-if="item.is_dropped" class="text-xs text-gray-500 ml-2">(已下车)</span>
+                                    <span v-if="item.is_new && !item.is_dropped" class="text-xs text-blue-500 ml-2">(新上车)</span>
+                                </div>
                                 <div class="text-xs text-gray-500">@{{ item.sub_account_id || '标准位' }}</div>
                             </div>
                             <div class="text-right">
-                                <div>@{{ item.price }}</div>
-                                <button @click="togglePaid(item)" class="text-xs underline" :class="item.is_paid ? 'text-green-600' : 'text-red-500'">
-                                    @{{ item.is_paid ? '已付' : '未付' }}
-                                </button>
+                                <div v-if="!item.is_dropped">@{{ item.price }}</div>
+                                <div v-else class="text-gray-400 line-through">@{{ item.price }}</div>
+                                <div class="flex gap-2 justify-end mt-1">
+                                    <button v-if="!item.is_paid && !item.is_dropped" @click="markDropped(item)" class="text-xs underline text-orange-600 hover:text-orange-700">
+                                        下车
+                                    </button>
+                                    <button v-if="item.is_dropped" @click="markDropped(item)" class="text-xs underline text-blue-600 hover:text-blue-700">
+                                        恢复
+                                    </button>
+                                    <button @click="togglePaid(item)" class="text-xs underline" :class="item.is_paid ? 'text-green-600' : 'text-red-500'" :disabled="item.is_dropped">
+                                        @{{ item.is_paid ? '已付' : '未付' }}
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -279,9 +335,12 @@
                             };
                         }
                         bills[item.user_email].items.push(item);
-                        bills[item.user_email].total += parseFloat(item.price);
-                        if (item.is_paid) {
-                            bills[item.user_email].paid_total += parseFloat(item.price);
+                        // 只计算未下车的项目
+                        if (!item.is_dropped) {
+                            bills[item.user_email].total += parseFloat(item.price);
+                            if (item.is_paid) {
+                                bills[item.user_email].paid_total += parseFloat(item.price);
+                            }
                         }
                     });
 
@@ -298,6 +357,17 @@
                 const totalReceived = computed(() => {
                     return userBills.value.reduce((sum, user) => sum + user.paid_total, 0).toFixed(2);
                 });
+
+                const getAccountStats = (accountId) => {
+                    const accountRenewals = allRenewals.value.filter(r => r.account_id === accountId);
+                    return {
+                        paid: accountRenewals.filter(r => r.is_paid && !r.is_dropped).length,
+                        unpaid: accountRenewals.filter(r => !r.is_paid && !r.is_dropped).length,
+                        dropped: accountRenewals.filter(r => r.is_dropped).length,
+                        new: accountRenewals.filter(r => r.is_new).length,
+                        total: accountRenewals.filter(r => !r.is_dropped).length
+                    };
+                };
 
                 const saveAccountSettings = async (account) => {
                     try {
@@ -357,14 +427,16 @@
                 };
 
                 const togglePaid = async (item) => {
+                    if (item.is_dropped) return; // 已下车的项目不能切换付款状态
                     try {
                         await api.post('/renewal/save', {
-                            id: item.id, // Assuming save supports update by ID or we send full payload
+                            id: item.id,
                             account_id: item.account_id,
                             target_year: targetYear.value,
                             user_email: item.user_email,
                             price: item.price,
                             is_paid: !item.is_paid,
+                            is_dropped: item.is_dropped || false,
                             sub_account_id: item.sub_account_id,
                             sub_account_pin: item.sub_account_pin
                         });
@@ -374,11 +446,7 @@
                         if (renewal) {
                             renewal.is_paid = !renewal.is_paid;
                         }
-                        // Force re-compute of current user for modal update
-                        // (Since currentReceiptUser is a ref to the computed object, we might need to refresh it)
-                        // Actually, since we modified the source `allRenewals`, the computed `userBills` will update,
-                        // but `currentReceiptUser` holds a reference to the OLD object from the list.
-                        // We need to find the updated user object.
+                        // Refresh current user object
                         const updatedUser = userBills.value.find(u => u.email === item.user_email);
                         if (updatedUser) {
                             currentReceiptUser.value = updatedUser;
@@ -387,6 +455,34 @@
                     } catch (e) { 
                         console.error(e);
                         alert('状态更新失败'); 
+                    }
+                };
+
+                const markDropped = async (item) => {
+                    const action = item.is_dropped ? '恢复' : '下车';
+                    if (!confirm(`确定要将 ${item.account_name} ${action}吗？`)) return;
+                    try {
+                        const res = await api.post('/renewal/mark-dropped', {
+                            id: item.id,
+                            is_dropped: !item.is_dropped
+                        });
+                        
+                        // Update local state immediately
+                        const renewal = allRenewals.value.find(r => r.id === item.id);
+                        if (renewal) {
+                            renewal.is_dropped = !renewal.is_dropped;
+                            if (renewal.is_dropped) {
+                                renewal.is_paid = false; // 下车时自动设为未付款
+                            }
+                        }
+                        // Refresh current user object
+                        const updatedUser = userBills.value.find(u => u.email === item.user_email);
+                        if (updatedUser) {
+                            currentReceiptUser.value = updatedUser;
+                        }
+                    } catch (e) {
+                        console.error(e);
+                        alert(`${action}失败: ` + (e.response?.data?.message || e.message));
                     }
                 };
 
@@ -405,7 +501,7 @@
                     showAddUserModal, currentAddUserAccount, addUserForm,
                     fetchData, saveAccountSettings, importCurrentUsers, 
                     openAddUserModal, addNewUser,
-                    showReceipt, togglePaid
+                    showReceipt, togglePaid, markDropped, getAccountStats
                 };
             }
         }).mount('#app');

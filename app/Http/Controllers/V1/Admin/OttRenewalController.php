@@ -48,6 +48,7 @@ class OttRenewalController extends Controller
             'user_email' => 'required|email',
             'price' => 'required|numeric',
             'is_paid' => 'boolean',
+            'is_dropped' => 'boolean',
             'sub_account_id' => 'nullable|string',
             'sub_account_pin' => 'nullable|string'
         ]);
@@ -66,6 +67,7 @@ class OttRenewalController extends Controller
             [
                 'price' => $request->input('price'),
                 'is_paid' => $request->input('is_paid', false),
+                'is_dropped' => $request->input('is_dropped', false),
                 'sub_account_id' => $request->input('sub_account_id'),
                 'sub_account_pin' => $request->input('sub_account_pin')
             ]
@@ -73,6 +75,33 @@ class OttRenewalController extends Controller
 
         return response([
             'data' => true
+        ]);
+    }
+
+    /**
+     * 标记用户下车（不再使用此账号）
+     */
+    public function markDropped(Request $request)
+    {
+        $request->validate([
+            'id' => 'required|integer',
+            'is_dropped' => 'required|boolean'
+        ]);
+
+        $renewal = OttRenewal::find($request->input('id'));
+        if (!$renewal) {
+            abort(404, 'Renewal not found');
+        }
+
+        $renewal->is_dropped = $request->input('is_dropped');
+        // 如果标记为下车，自动设置为未付款
+        if ($request->input('is_dropped')) {
+            $renewal->is_paid = false;
+        }
+        $renewal->save();
+
+        return response([
+            'data' => $renewal
         ]);
     }
 
@@ -116,6 +145,7 @@ class OttRenewalController extends Controller
                 [
                     'price' => $perUserPrice,
                     'is_paid' => false,
+                    'is_new' => false, // 导入的当前用户不是新用户
                     'sub_account_id' => $user->sub_account_id,
                     'sub_account_pin' => $user->sub_account_pin
                 ]
@@ -159,7 +189,7 @@ class OttRenewalController extends Controller
         $nextSeats = $account->next_shared_seats ?? ($account->shared_seats ?? 1);
         $perUserPrice = round($nextYearlyPrice / $nextSeats, 2);
 
-        // 创建续费记录
+        // 创建续费记录，标记为新用户
         $renewal = OttRenewal::firstOrCreate(
             [
                 'account_id' => $account->id,
@@ -169,6 +199,7 @@ class OttRenewalController extends Controller
             [
                 'price' => $perUserPrice,
                 'is_paid' => false,
+                'is_new' => true, // 新添加的用户标记为新用户
                 'sub_account_id' => $request->input('sub_account_id'),
                 'sub_account_pin' => $request->input('sub_account_pin')
             ]

@@ -27,10 +27,12 @@ class OttRenewalSwitch extends Command
             $deletedExpiredCount = OttUser::where('expired_at', '<=', $lastYearEnd)->delete();
             $this->info("Deleted $deletedExpiredCount expired users from previous year.");
 
-            // 2. 清理当前年份未付费的renewal对应的用户
-            // 找到所有target_year为当前年份，但is_paid为false的renewal
+            // 2. 清理当前年份未付费且未下车的renewal对应的用户
+            // 找到所有target_year为当前年份，但is_paid为false且未下车的renewal
+            // 注意：已下车的renewal不会被清理，保留在数据库中作为记录
             $unpaidRenewals = OttRenewal::where('target_year', $year)
                 ->where('is_paid', false)
+                ->where('is_dropped', false)
                 ->get();
             
             $deletedUnpaidCount = 0;
@@ -44,9 +46,10 @@ class OttRenewalSwitch extends Command
             }
             $this->info("Removed access for $deletedUnpaidCount unpaid renewals.");
 
-            // 3. 激活已付费的renewal
+            // 3. 激活已付费且未下车的renewal
             $renewals = OttRenewal::where('target_year', $year)
                 ->where('is_paid', true)
+                ->where('is_dropped', false)
                 ->get();
 
             if ($renewals->isEmpty()) {

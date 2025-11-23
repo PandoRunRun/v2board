@@ -26,6 +26,7 @@ class OttRoute
             $router->post('/renewal/drop', 'V1\\Admin\\OttRenewalController@drop');
             $router->post('/renewal/import', 'V1\\Admin\\OttRenewalController@importCurrentUsers');
             $router->post('/renewal/add-user', 'V1\\Admin\\OttRenewalController@addNewUser');
+            $router->post('/renewal/mark-dropped', 'V1\\Admin\\OttRenewalController@markDropped');
         });
 
         $router->group([
