@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>OTT 续费管理</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
@@ -72,8 +72,11 @@
                                 </button>
                             </div>
                             <div class="pt-2 border-t border-gray-700">
-                                <button @click="importCurrentUsers(acc)" class="w-full bg-gray-700 hover:bg-gray-600 text-white px-3 py-1.5 rounded text-sm">
+                                <button @click="importCurrentUsers(acc)" class="w-full bg-gray-700 hover:bg-gray-600 text-white px-3 py-1.5 rounded text-sm mb-2">
                                     导入当前用户
+                                </button>
+                                <button @click="openAddUserModal(acc)" class="w-full bg-green-700 hover:bg-green-600 text-white px-3 py-1.5 rounded text-sm">
+                                    + 预添加新用户
                                 </button>
                             </div>
                         </div>
@@ -82,34 +85,35 @@
 
                 <!-- Tab: Bills Management -->
                 <div v-if="activeTab === 'bills'">
-                    <div class="bg-gray-800 rounded-lg shadow-lg border border-gray-700 overflow-hidden">
-                        <div class="p-4 border-b border-gray-700 flex justify-between items-center">
+                    <div class="bg-gray-800 rounded-lg shadow-lg border border-gray-700 overflow-hidden mb-4">
+                        <div class="p-4 border-b border-gray-700 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                             <h3 class="text-lg font-bold text-white">用户账单列表 (@{{ targetYear }})</h3>
                             <div class="text-sm text-gray-400">
                                 总计应收: <span class="text-white font-bold">@{{ totalReceivable }}</span> | 
                                 已收: <span class="text-green-400 font-bold">@{{ totalReceived }}</span>
                             </div>
                         </div>
-                        <table class="w-full text-left text-sm text-gray-300">
-                            <thead class="bg-gray-900 text-gray-400 uppercase font-medium">
-                                <tr>
-                                    <th class="px-4 py-3">用户邮箱</th>
-                                    <th class="px-4 py-3">订阅项目数</th>
-                                    <th class="px-4 py-3">总金额</th>
-                                    <th class="px-4 py-3">状态</th>
-                                    <th class="px-4 py-3 text-right">操作</th>
-                                </tr>
-                            </thead>
-                            <tbody class="divide-y divide-gray-700">
-                                <tr v-for="user in userBills" :key="user.email" class="hover:bg-gray-700">
-                                    <td class="px-4 py-3 font-medium text-white">@{{ user.email }}</td>
-                                    <td class="px-4 py-3">
-                                        <div class="flex flex-wrap gap-1">
-                                            <span v-for="item in user.items" class="px-1.5 py-0.5 bg-gray-600 rounded text-xs">
-                                                @{{ item.account_name }}
-                                            </span>
-                                        </div>
-                                    </td>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left text-sm text-gray-300 min-w-full">
+                                <thead class="bg-gray-900 text-gray-400 uppercase font-medium">
+                                    <tr>
+                                        <th class="px-4 py-3">用户邮箱</th>
+                                        <th class="px-4 py-3">订阅项目数</th>
+                                        <th class="px-4 py-3">总金额</th>
+                                        <th class="px-4 py-3">状态</th>
+                                        <th class="px-4 py-3 text-right">操作</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-gray-700">
+                                    <tr v-for="user in userBills" :key="user.email" class="hover:bg-gray-700">
+                                        <td class="px-4 py-3 font-medium text-white">@{{ user.email }}</td>
+                                        <td class="px-4 py-3">
+                                            <div class="flex flex-wrap gap-1 overflow-x-auto">
+                                                <span v-for="item in user.items" class="px-1.5 py-0.5 bg-gray-600 rounded text-xs whitespace-nowrap">
+                                                    @{{ item.account_name }}
+                                                </span>
+                                            </div>
+                                        </td>
                                     <td class="px-4 py-3 font-bold text-blue-400">@{{ user.total.toFixed(2) }}</td>
                                     <td class="px-4 py-3">
                                         <span :class="user.is_fully_paid ? 'bg-green-900 text-green-300' : 'bg-yellow-900 text-yellow-300'" class="px-2 py-1 rounded text-xs">
@@ -120,19 +124,52 @@
                                         <button @click="showReceipt(user)" class="text-blue-400 hover:text-blue-300">查看小票</button>
                                     </td>
                                 </tr>
-                                <tr v-if="userBills.length === 0">
-                                    <td colspan="5" class="px-4 py-6 text-center text-gray-500">暂无账单数据。</td>
-                                </tr>
-                            </tbody>
-                        </table>
+                                    <tr v-if="userBills.length === 0">
+                                        <td colspan="5" class="px-4 py-6 text-center text-gray-500">暂无账单数据。</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Add User Modal -->
+            <div v-if="showAddUserModal" class="fixed inset-0 modal flex items-center justify-center p-4 z-50 overflow-y-auto">
+                <div class="bg-gray-800 rounded-lg w-full max-w-md p-6 border border-gray-700 my-4">
+                    <div class="flex justify-between items-center mb-6">
+                        <h2 class="text-2xl font-bold text-white">预添加新用户</h2>
+                        <button @click="showAddUserModal = false" class="text-gray-400 hover:text-white">✕</button>
+                    </div>
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm text-gray-400 mb-1">账号</label>
+                            <div class="text-white font-medium">@{{ currentAddUserAccount ? currentAddUserAccount.name : '' }}</div>
+                        </div>
+                        <div>
+                            <label class="block text-sm text-gray-400 mb-1">用户邮箱</label>
+                            <input v-model="addUserForm.email" type="email" class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white" placeholder="user@example.com">
+                        </div>
+                        <div>
+                            <label class="block text-sm text-gray-400 mb-1">车位/子账号 (可选)</label>
+                            <input v-model="addUserForm.sub_account_id" class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white" placeholder="例如: Kids">
+                        </div>
+                        <div>
+                            <label class="block text-sm text-gray-400 mb-1">PIN码 (可选)</label>
+                            <input v-model="addUserForm.sub_account_pin" class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white" placeholder="例如: 1234">
+                        </div>
+                        <div class="pt-4 border-t border-gray-700 flex justify-end space-x-4">
+                            <button @click="showAddUserModal = false" class="px-4 py-2 text-gray-400 hover:text-white">取消</button>
+                            <button @click="addNewUser" class="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded">添加</button>
+                        </div>
                     </div>
                 </div>
             </div>
 
             <!-- Receipt Modal -->
-            <div v-if="showReceiptModal" class="fixed inset-0 modal flex items-center justify-center p-4 z-50">
-                <div class="bg-white text-gray-900 rounded-lg w-full max-w-md p-8 shadow-2xl relative">
-                    <button @click="showReceiptModal = false" class="absolute top-2 right-2 text-gray-400 hover:text-gray-600">✕</button>
+            <div v-if="showReceiptModal" class="fixed inset-0 modal flex items-center justify-center p-4 z-50 overflow-y-auto">
+                <div class="bg-white text-gray-900 rounded-lg w-full max-w-md p-8 shadow-2xl relative my-4 max-h-[90vh] overflow-y-auto">
+                    <button @click="showReceiptModal = false" class="sticky top-0 right-0 float-right text-gray-400 hover:text-gray-600 bg-white z-10 p-2 rounded-full hover:bg-gray-100">✕</button>
                     
                     <div class="text-center border-b-2 border-dashed border-gray-300 pb-6 mb-6">
                         <h2 class="text-2xl font-bold uppercase tracking-widest mb-1">续费账单</h2>
@@ -187,6 +224,14 @@
                 
                 const showReceiptModal = ref(false);
                 const currentReceiptUser = ref({});
+                
+                const showAddUserModal = ref(false);
+                const currentAddUserAccount = ref(null);
+                const addUserForm = ref({
+                    email: '',
+                    sub_account_id: '',
+                    sub_account_pin: ''
+                });
 
                 const api = axios.create({ baseURL: '/api/v1/admin/ott' });
 
@@ -273,6 +318,39 @@
                     } catch (e) { alert('导入失败'); }
                 };
 
+                const openAddUserModal = (account) => {
+                    currentAddUserAccount.value = account;
+                    addUserForm.value = {
+                        email: '',
+                        sub_account_id: '',
+                        sub_account_pin: ''
+                    };
+                    showAddUserModal.value = true;
+                };
+
+                const addNewUser = async () => {
+                    if (!addUserForm.value.email) {
+                        alert('请填写用户邮箱');
+                        return;
+                    }
+                    try {
+                        await api.post('/renewal/add-user', {
+                            account_id: currentAddUserAccount.value.id,
+                            target_year: targetYear.value,
+                            user_email: addUserForm.value.email,
+                            sub_account_id: addUserForm.value.sub_account_id,
+                            sub_account_pin: addUserForm.value.sub_account_pin
+                        });
+                        showAddUserModal.value = false;
+                        fetchData();
+                        alert('添加成功');
+                    } catch (e) {
+                        console.error(e);
+                        alert('添加失败: ' + (e.response?.data?.message || e.message));
+                    }
+                };
+
+
                 const showReceipt = (user) => {
                     currentReceiptUser.value = user;
                     showReceiptModal.value = true;
@@ -324,7 +402,10 @@
                     token, activeTab, targetYear, accounts, 
                     userBills, totalReceivable, totalReceived,
                     showReceiptModal, currentReceiptUser,
-                    fetchData, saveAccountSettings, importCurrentUsers, showReceipt, togglePaid
+                    showAddUserModal, currentAddUserAccount, addUserForm,
+                    fetchData, saveAccountSettings, importCurrentUsers, 
+                    openAddUserModal, addNewUser,
+                    showReceipt, togglePaid
                 };
             }
         }).mount('#app');

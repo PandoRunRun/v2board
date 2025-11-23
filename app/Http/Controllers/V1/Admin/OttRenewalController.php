@@ -126,4 +126,57 @@ class OttRenewalController extends Controller
             'data' => true
         ]);
     }
+
+    /**
+     * 添加新用户到续费列表（预添加，用户可能还未绑定账户）
+     */
+    public function addNewUser(Request $request)
+    {
+        $request->validate([
+            'account_id' => 'required|integer',
+            'target_year' => 'required|integer',
+            'user_email' => 'required|email',
+            'sub_account_id' => 'nullable|string',
+            'sub_account_pin' => 'nullable|string'
+        ]);
+
+        $account = OttAccount::find($request->input('account_id'));
+        if (!$account) abort(500, 'Account not found');
+
+        // 查找或创建用户
+        $user = User::where('email', $request->input('user_email'))->first();
+        if (!$user) {
+            // 如果用户不存在，创建一个新用户（但不绑定到账户，等年初自动覆盖时再绑定）
+            $user = User::create([
+                'email' => $request->input('user_email'),
+                'password' => bcrypt(str()->random(32)), // 随机密码，用户需要重置
+                'is_ott' => true
+            ]);
+        }
+
+        // Calculate next price per user
+        $nextYearlyPrice = $account->next_price_yearly ?? ($account->price_yearly ?? 0);
+        $nextSeats = $account->next_shared_seats ?? ($account->shared_seats ?? 1);
+        $perUserPrice = round($nextYearlyPrice / $nextSeats, 2);
+
+        // 创建续费记录
+        $renewal = OttRenewal::firstOrCreate(
+            [
+                'account_id' => $account->id,
+                'user_id' => $user->id,
+                'target_year' => $request->input('target_year')
+            ],
+            [
+                'price' => $perUserPrice,
+                'is_paid' => false,
+                'sub_account_id' => $request->input('sub_account_id'),
+                'sub_account_pin' => $request->input('sub_account_pin')
+            ]
+        );
+
+        return response([
+            'data' => $renewal
+        ]);
+    }
+
 }

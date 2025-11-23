@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>OTT 账号管理</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
@@ -43,6 +43,7 @@
                                 <span class="text-sm text-gray-400 bg-gray-900 px-2 py-1 rounded">@{{ account.type }}</span>
                             </div>
                             <div class="flex space-x-2">
+                                <button @click="copyAccount(account)" class="text-green-400 hover:text-green-300" title="复制账号">复制</button>
                                 <button @click="openAccountModal(account)" class="text-blue-400 hover:text-blue-300">编辑</button>
                                 <button @click="deleteAccount(account.id)" class="text-red-400 hover:text-red-300">删除</button>
                             </div>
@@ -412,6 +413,32 @@
                     showAccountModal.value = true;
                 };
 
+                const copyAccount = (account) => {
+                    // 复制账号配置，但不复制 ID 和用户绑定
+                    editingAccount.value = null;
+                    accountForm.value = {
+                        name: account.name + ' (副本)',
+                        type: account.type,
+                        username: account.username,
+                        password: account.password,
+                        has_otp: account.has_otp,
+                        is_shared_credentials: account.is_shared_credentials,
+                        is_active: account.is_active,
+                        sender_filter: account.sender_filter,
+                        recipient_filter: account.recipient_filter,
+                        subject_regex: account.subject_regex,
+                        ignore_regex: account.ignore_regex,
+                        otp_validity_minutes: account.otp_validity_minutes,
+                        group_id: account.group_id,
+                        price_monthly: account.price_monthly,
+                        price_yearly: account.price_yearly,
+                        shared_seats: account.shared_seats,
+                        next_price_yearly: account.next_price_yearly,
+                        next_shared_seats: account.next_shared_seats
+                    };
+                    showAccountModal.value = true;
+                };
+
                 const openUsersModal = (account) => {
                     currentAccount.value = account;
                     bindForm.value = { email: '', account_id: account.id, expired_at: '', sub_account_id: '', sub_account_pin: '' };
@@ -531,7 +558,7 @@
                 return {
                     token, accounts, showAccountModal, showUsersModal, showLogsModal, editingAccount, currentAccount, accountUsers, accountLogs,
                     accountForm, bindForm,
-                    openAccountModal, openUsersModal, openLogsModal, saveAccount, deleteAccount, bindUser, unbindUser, editUser,
+                    openAccountModal, copyAccount, openUsersModal, openLogsModal, saveAccount, deleteAccount, bindUser, unbindUser, editUser,
                     formatDate, isExpired, calculateCost, calculateFormCost
                 };
             }
