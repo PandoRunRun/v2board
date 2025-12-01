@@ -1,27 +1,14 @@
-<?php
-
-namespace App\Http\Controllers\V1\Client;
-
-use App\Http\Controllers\Controller;
-use App\Protocols\General;
-use App\Protocols\Singbox\Singbox;
-use App\Protocols\Singbox\SingboxOld;
-use App\Services\ServerService;
-use App\Services\UserService;
-use App\Utils\Helper;
-use Illuminate\Http\Request;
-
-class ClientController extends Controller
-{
-    public function subscribe(Request $request)
+public function subscribe(Request $request)
     {
         $flag = $request->input('flag')
             ?? ($_SERVER['HTTP_USER_AGENT'] ?? '');
         $flag = strtolower($flag);
         $user = $request->user;
+        
         // account not expired and is not banned.
         $userService = new UserService();
         if ($userService->isAvailable($user)) {
+            // ... (正常用户的逻辑保持不变) ...
             $serverService = new ServerService();
             $servers = $serverService->getAvailableServers($user);
             if ($flag) {
@@ -50,44 +37,66 @@ class ClientController extends Controller
             }
             $class = new General($user, $servers);
             return $class->handle();
-        } elseif (!$user['banned']) { // 这里是正确的位置
-            $serverService = new ServerService();
-            $servers = $serverService->getAvailableServers($user);
+            
+        } elseif (!$user['banned']) { // === 这里开始是修改的重点 ===
+            
+            // 1. 初始化 servers 为空数组，确保不包含任何真实节点
+            $servers = [];
 
-            // 如果账户不可用，通常 getAvailableServers 可能返回空，需要处理这种情况以避免报错
-            // 这里假设即使不可用也能获取到服务器列表用于展示提示节点。
-            // 如果 $servers 为空，下面的 array_merge($servers[0], ...) 会报错。
-            // 建议添加一个基本的检查，或者构造一个虚拟的服务器节点用于承载提示信息。
-            if (empty($servers)) {
-                 // 构造一个假的 server 数组结构，避免 $servers[0] 不存在导致的错误
-                 // 具体的结构需要参考你的 ServerService 返回的真实结构
-                 $servers = [['name' => '提示', 'server' => '127.0.0.1', 'port' => 0, 'protocol' => 'trojan']]; 
-            }
+            // 2. 定义一个通用的模板节点
+            // 必须包含协议转换所需的字段，否则 Protocol 类会报错
+            // 这里使用 Trojan 协议，因为它在大多数客户端上显示文本比较友好
+            $templateServer = [
+                'name' => '提示信息',
+                'group_name' => '系统通知',
+                'server' => '127.0.0.1', // 假 IP
+                'port' => 443,
+                'type' => 'trojan',      // 类型
+                'password' => 'expired', // 随意填写
+                'cipher' => 'auto',      // 随意填写
+                'tags' => [],
+                // 如果你的 v2board 版本较新，可能还需要 udp, allow_insecure 等字段，视情况补充
+            ];
 
-
+            // 3. 计算流量数据
             $useTraffic = $user['u'] + $user['d'];
             $totalTraffic = $user['transfer_enable'];
-            // 注意：Helper::trafficConvert 可能返回带有单位的字符串，比较时可能需要注意
             $remainingTrafficValue = $totalTraffic - $useTraffic;
-            
-            array_unshift($servers, array_merge($servers[0], [
-                'name' => "https://潘多快跑.com",
+
+            // 4. 开始构建提示节点列表 (注意顺序，后添加的 unshift 会排在最前面)
+
+            // D. 最底部的提示：官网地址
+            array_unshift($servers, array_merge($templateServer, [
+                'name' => "官网: https://潘多快跑.com",
             ]));
-            array_unshift($servers, array_merge($servers[0], [
+
+            // C. 引导续费提示
+            array_unshift($servers, array_merge($templateServer, [
                 'name' => "请去往官网重置流量或续费",
             ]));
+
+            // B. 流量耗尽提示
             if ($remainingTrafficValue <= 0) {
-                array_unshift($servers, array_merge($servers[0], [
-                    'name' => "您的流量已用尽",
+                array_unshift($servers, array_merge($templateServer, [
+                    'name' => "套餐流量已用尽",
                 ]));
             }
 
+            // A. 过期提示 (最重要，放在最上面)
             if ($user['expired_at'] !== NULL && $user['expired_at'] <= time()) {
-                 array_unshift($servers, array_merge($servers[0], [
+                array_unshift($servers, array_merge($templateServer, [
                     'name' => "您的订阅已过期",
                 ]));
             }
+            
+            // 如果没有任何特殊状态（理论上进到这里肯定是有问题的），给一个默认提示
+            if (empty($servers)) {
+                 array_unshift($servers, array_merge($templateServer, [
+                    'name' => "账户状态异常",
+                ]));
+            }
 
+            // 5. 下发订阅逻辑
             if ($flag) {
                 foreach (array_reverse(glob(app_path('Protocols') . '/*.php')) as $file) {
                     $file = 'App\\Protocols\\' . basename($file, '.php');
@@ -97,31 +106,8 @@ class ClientController extends Controller
                     }
                 }
             }
+            // 默认 General
             $class = new General($user, $servers);
             return $class->handle();
         }
     }
-
-    private function setSubscribeInfoToServers(&$servers, $user)
-    {
-        if (!isset($servers[0])) return;
-        if (!(int)config('v2board.show_info_to_server_enable', 0)) return;
-        $useTraffic = $user['u'] + $user['d'];
-        $totalTraffic = $user['transfer_enable'];
-        $remainingTraffic = Helper::trafficConvert($totalTraffic - $useTraffic);
-        $expiredDate = $user['expired_at'] ? date('Y-m-d', $user['expired_at']) : '长期有效';
-        $userService = new UserService();
-        $resetDay = $userService->getResetDay($user);
-        array_unshift($servers, array_merge($servers[0], [
-            'name' => "套餐到期：{$expiredDate}",
-        ]));
-        if ($resetDay) {
-            array_unshift($servers, array_merge($servers[0], [
-                'name' => "距离下次重置剩余：{$resetDay} 天",
-            ]));
-        }
-        array_unshift($servers, array_merge($servers[0], [
-            'name' => "剩余流量：{$remainingTraffic}",
-        ]));
-    }
-}
