@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Protocols\General;
 use App\Protocols\Singbox\Singbox;
 use App\Protocols\Singbox\SingboxOld;
+use App\Protocols\ClashMeta;
 use App\Services\ServerService;
 use App\Services\UserService;
 use App\Utils\Helper;
@@ -21,6 +22,7 @@ class ClientController extends Controller
         $user = $request->user;
 
         $userService = new UserService();
+<<<<<<< HEAD
 
         // ----------------------------------------------------------
         // 分支 1：账户状态正常 (未过期 且 流量充足)
@@ -31,6 +33,20 @@ class ClientController extends Controller
             
             if ($flag) {
                 // 处理非 Sing-box 客户端
+=======
+        if (!$user['banned']) {
+            $serverService = new ServerService();
+            $servers = [];
+            if ($userService->isAvailable($user)) {
+                $servers = $serverService->getAvailableServers($user);
+            }
+            
+            if (empty($servers)) {
+                $servers = [$this->getDummyServer()];
+            }
+
+            if($flag) {
+>>>>>>> 52d39ca5 (feat: add subscription versioning and expired user notification)
                 if (!strpos($flag, 'sing')) {
                     $this->setSubscribeInfoToServers($servers, $user);
                     foreach (array_reverse(glob(app_path('Protocols') . '/*.php')) as $file) {
@@ -154,6 +170,22 @@ class ClientController extends Controller
         }
     }
 
+    private function getDummyServer()
+    {
+        return [
+            'type' => 'shadowsocks',
+            'name' => '官网地址：oiii.cloud',
+            'host' => '127.0.0.1',
+            'port' => 443,
+            'cipher' => 'aes-128-gcm',
+            'password' => 'dummy',
+            'group_id' => [],
+            'parent_id' => null,
+            'route_id' => null,
+            'tags' => [],
+        ];
+    }
+
     private function setSubscribeInfoToServers(&$servers, $user)
     {
         if (!isset($servers[0])) return;
@@ -174,6 +206,27 @@ class ClientController extends Controller
         }
         array_unshift($servers, array_merge($servers[0], [
             'name' => "剩余流量：{$remainingTraffic}",
+        ]));
+        if ($user['expired_at'] !== NULL && $user['expired_at'] < time()) {
+            array_unshift($servers, array_merge($servers[0], [
+                'name' => "请去往官网续费订阅",
+            ]));
+            array_unshift($servers, array_merge($servers[0], [
+                'name' => "您的套餐已过期",
+            ]));
+        } else if (($user['u'] + $user['d']) >= $user['transfer_enable']) {
+            array_unshift($servers, array_merge($servers[0], [
+                'name' => "请去往官网重置流量",
+            ]));
+            array_unshift($servers, array_merge($servers[0], [
+                'name' => "您的流量已耗尽",
+            ]));
+        }
+
+        $serverService = new ServerService();
+        $version = $serverService->getSubscriptionVersion($user);
+        array_unshift($servers, array_merge($servers[0], [
+            'name' => "当前版本：{$version}",
         ]));
     }
 }

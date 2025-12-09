@@ -350,6 +350,8 @@ class UserController extends Controller
         $userService = new UserService();
         $user['reset_day'] = $userService->getResetDay($user);
         $user['allow_new_period'] = config('v2board.allow_new_period', 0);
+        $serverService = new \App\Services\ServerService();
+        $user['subscribe_version'] = $serverService->getSubscriptionVersion($request->user());
         return response([
             'data' => $user
         ]);

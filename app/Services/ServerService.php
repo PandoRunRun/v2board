@@ -460,4 +460,21 @@ class ServerService
                 return false;
         }
     }
+    public function getSubscriptionVersion(User $user)
+    {
+        $servers = $this->getAllServers();
+        $lastUpdatedAt = 0;
+        foreach ($servers as $server) {
+            if (!in_array($user->group_id, $server['group_id'])) continue;
+            if ($server['updated_at'] > $lastUpdatedAt) {
+                $lastUpdatedAt = $server['updated_at'];
+            }
+        }
+
+        if ($lastUpdatedAt === 0) {
+            return '0';
+        }
+
+        return date('YmdHi', $lastUpdatedAt);
+    }
 }
