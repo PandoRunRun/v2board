@@ -324,7 +324,8 @@ class UserController extends Controller
                 'transfer_enable',
                 'device_limit',
                 'email',
-                'uuid'
+                'uuid',
+                'group_id'
             ])
             ->first();
         if (!$user) {
@@ -351,7 +352,7 @@ class UserController extends Controller
         $user['reset_day'] = $userService->getResetDay($user);
         $user['allow_new_period'] = config('v2board.allow_new_period', 0);
         $serverService = new \App\Services\ServerService();
-        $user['subscribe_version'] = $serverService->getSubscriptionVersion($request->user());
+        $user['subscribe_version'] = $serverService->getSubscriptionVersion($user);
         return response([
             'data' => $user
         ]);
