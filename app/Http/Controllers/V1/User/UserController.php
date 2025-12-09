@@ -353,6 +353,7 @@ class UserController extends Controller
         $user['allow_new_period'] = config('v2board.allow_new_period', 0);
         $serverService = new \App\Services\ServerService();
         $user['subscribe_version'] = $serverService->getSubscriptionVersion($user);
+        $user->makeHidden(['group_id']);
         return response([
             'data' => $user
         ]);
