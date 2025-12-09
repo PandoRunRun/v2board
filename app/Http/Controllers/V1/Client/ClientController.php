@@ -77,6 +77,7 @@ class ClientController extends Controller
             'parent_id' => null,
             'route_id' => null,
             'tags' => [],
+            'obfs' => null,
         ];
     }
 
