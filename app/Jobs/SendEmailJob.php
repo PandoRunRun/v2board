@@ -51,6 +51,7 @@ class SendEmailJob implements ShouldQueue
         $params['template_name'] = 'mail.' . config('v2board.email_template', 'default') . '.' . $params['template_name'];
         try {
             sleep(2); 
+            $params['template_value']['email'] = $email;
             Mail::send(
                 $params['template_name'],
                 $params['template_value'],
