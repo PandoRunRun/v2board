@@ -14,9 +14,9 @@ class AuthForget extends FormRequest
     public function rules()
     {
         return [
-            'email' => 'required|email:strict',
-            'password' => 'required|min:8',
-            'email_code' => 'required'
+            'email' => 'required|email:strict|max:80',
+            'password' => 'required|min:8|max:64',
+            'email_code' => 'required|string|digits:6'
         ];
     }
 
