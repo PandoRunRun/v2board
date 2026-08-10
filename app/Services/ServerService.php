@@ -243,9 +243,50 @@ class ServerService
                 $server['port'] = (int)$server['port'];
             }
             $server['is_online'] = (time() - 300 > $server['last_check_at']) ? 0 : 1;
-            $server['cache_key'] = "{$server['type']}-{$server['id']}-{$server['updated_at']}-{$server['is_online']}";
+            $probeStatus = $this->getProbeStatus($server);
+            $probeReportedAt = 0;
+            if ($probeStatus !== null) {
+                $server['probe_status'] = $probeStatus;
+                $probeReportedAt = (int)($probeStatus['reported_at'] ?? 0);
+            }
+            $server['cache_key'] = "{$server['type']}-{$server['id']}-{$server['updated_at']}-{$server['is_online']}-{$probeReportedAt}";
             return $server;
         }, $servers);
+    }
+
+    /**
+     * 探测状态按“协议类型 + 父节点 ID”读取，因此同一父节点下的所有子节点
+     * 都会得到完全相同的状态和历史。没有探测记录时不向旧接口响应增加字段。
+     */
+    private function getProbeStatus(array $server): ?array
+    {
+        $serverType = strtolower((string)($server['type'] ?? ''));
+        $parentId = (int)($server['parent_id'] ?? 0);
+        if ($parentId <= 0) {
+            $parentId = (int)($server['id'] ?? 0);
+        }
+        if ($serverType === '' || $parentId <= 0) return null;
+
+        $history = Cache::get(
+            CacheKey::get('SERVER_PROBE_HISTORY', "{$serverType}_{$parentId}"),
+            []
+        );
+        if (!is_array($history)) return null;
+
+        $history = array_values(array_filter($history, function ($snapshot) {
+            return is_array($snapshot);
+        }));
+        if (count($history) === 0) return null;
+
+        $latest = $history[0];
+        $reportedAt = (int)($latest['reported_at'] ?? $latest['checked_at'] ?? 0);
+
+        return [
+            'state' => ($reportedAt > 0 && time() - $reportedAt <= 7200) ? 'ok' : 'stale',
+            'checked_at' => (int)($latest['checked_at'] ?? $reportedAt),
+            'reported_at' => $reportedAt,
+            'history' => $history,
+        ];
     }
 
     public function getAvailableUsers($groupId)

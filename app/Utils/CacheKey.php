@@ -31,6 +31,8 @@ class CacheKey
         'SERVER_V2NODE_ONLINE_USER' => 'v2node节点在线用户',
         'SERVER_V2NODE_LAST_CHECK_AT' => 'v2node节点最后检查时间',
         'SERVER_V2NODE_LAST_PUSH_AT' => 'v2node节点最后推送时间',
+        'SERVER_PROBE_CURRENT' => '节点探测当前状态',
+        'SERVER_PROBE_HISTORY' => '节点探测历史状态',
         'TEMP_TOKEN' => '临时令牌',
         'LAST_SEND_EMAIL_REMIND_TRAFFIC' => '最后发送流量邮件提醒',
         'SCHEDULE_LAST_CHECK_AT' => '计划任务最后检查时间',
