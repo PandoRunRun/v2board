@@ -14,7 +14,25 @@ source "$CONFIG_FILE"
 : "${API_URL:?API_URL is required}"
 : "${API_TOKEN:?API_TOKEN is required}"
 : "${NODE_TYPE:?NODE_TYPE is required}"
-: "${NODE_ID:?NODE_ID is required}"
+NODE_IDS="${NODE_IDS:-${NODE_ID:-}}"
+: "${NODE_IDS:?NODE_IDS is required}"
+MEDIA_IP_VERSION="${MEDIA_IP_VERSION:-4}"
+if [[ "$MEDIA_IP_VERSION" != "4" && "$MEDIA_IP_VERSION" != "6" ]]; then
+    echo "MEDIA_IP_VERSION must be 4 or 6" >&2
+    exit 2
+fi
+NODE_IDS="$(printf '%s' "$NODE_IDS" | tr -d '[:space:]')"
+IFS=',' read -r -a NODE_ID_LIST <<< "$NODE_IDS"
+if [[ "${#NODE_ID_LIST[@]}" -eq 0 ]]; then
+    echo "NODE_IDS must contain at least one node ID" >&2
+    exit 2
+fi
+for node_id in "${NODE_ID_LIST[@]}"; do
+    if [[ ! "$node_id" =~ ^[1-9][0-9]*$ ]]; then
+        echo "NODE_IDS must be comma-separated positive integers: $NODE_IDS" >&2
+        exit 2
+    fi
+done
 
 mkdir -p "$STATE_DIR" && chmod 700 "$STATE_DIR"
 mkdir -p "$(dirname "$LOCK_FILE")"
@@ -30,12 +48,14 @@ MEDIA_URL="https://raw.githubusercontent.com/1-stream/RegionRestrictionCheck/mai
 curl -fsSL --retry 3 --connect-timeout 15 --max-time 60 "$MEDIA_URL" -o "$WORK_DIR/region-check.sh"
 chmod 700 "$WORK_DIR/region-check.sh"
 
-# 上游 -F 模式会同时调用 IPv4/IPv6；临时改写下载副本，只保留 IPv4 分支。
-python3 - "$WORK_DIR/region-check.sh" "$WORK_DIR/region-check-v4.sh" <<'PY'
+# 上游 -F 模式会同时调用 IPv4/IPv6；临时改写下载副本，只保留指定 IP 版本分支。
+python3 - "$WORK_DIR/region-check.sh" "$WORK_DIR/region-check-v${MEDIA_IP_VERSION}.sh" "$MEDIA_IP_VERSION" <<'PY'
 from pathlib import Path
 import sys
 
-source_path, output_path = map(Path, sys.argv[1:])
+source_path = Path(sys.argv[1])
+output_path = Path(sys.argv[2])
+ip_version = sys.argv[3]
 source = source_path.read_text(encoding="utf-8")
 marker = 'if [ -n "$func" ]; then'
 start = source.find(marker)
@@ -45,20 +65,20 @@ if start < 0 or end < 0:
     raise SystemExit("无法定位 RegionRestrictionCheck 的 -F 分支，拒绝执行未知版本")
 end += len(end_marker)
 replacement = '''if [ -n "$func" ]; then
-    echo -e "${Font_Green}IPv4:${Font_Suffix}"
-    $func 4
+    echo -e "${Font_Green}IPv__IP_VERSION__:${Font_Suffix}"
+    $func __IP_VERSION__
     exit
-fi'''
+fi'''.replace("__IP_VERSION__", ip_version)
 output_path.write_text(source[:start] + replacement + source[end:], encoding="utf-8")
 PY
-chmod 700 "$WORK_DIR/region-check-v4.sh"
+chmod 700 "$WORK_DIR/region-check-v${MEDIA_IP_VERSION}.sh"
 
 MEDIA_DIR="$WORK_DIR/media"
 mkdir -p "$MEDIA_DIR"
 run_media_test() {
     local id="$1" name="$2" function_name="$3"
     echo "运行流媒体/AI 探测：$name"
-    if ! timeout "${MEDIA_TIMEOUT_SECONDS:-240}" bash "$WORK_DIR/region-check-v4.sh" -M 4 -F "$function_name" >"$MEDIA_DIR/$id.txt" 2>&1; then
+    if ! timeout "${MEDIA_TIMEOUT_SECONDS:-240}" bash "$WORK_DIR/region-check-v${MEDIA_IP_VERSION}.sh" -M "$MEDIA_IP_VERSION" -F "$function_name" >"$MEDIA_DIR/$id.txt" 2>&1; then
         echo "流媒体探测失败：$name" >&2
     fi
 }
@@ -165,7 +185,7 @@ else
     echo "未找到 nping 或 getent，跳过网站/CDN 探测。" >&2
 fi
 
-python3 - "$MEDIA_DIR" "$NETWORK_DIR" "$WORK_DIR/payload.json" "$NODE_TYPE" "$NODE_ID" <<'PY'
+python3 - "$MEDIA_DIR" "$NETWORK_DIR" "$WORK_DIR/payload.json" "$NODE_TYPE" "$MEDIA_IP_VERSION" <<'PY'
 import json
 import re
 import sys
@@ -176,7 +196,7 @@ media_dir = Path(sys.argv[1])
 network_dir = Path(sys.argv[2])
 payload_path = Path(sys.argv[3])
 node_type = sys.argv[4]
-node_id = int(sys.argv[5])
+media_ip_version = sys.argv[5]
 ansi = re.compile(r"\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])")
 media_specs = [("netflix", "Netflix"), ("disney_plus", "Disney+"), ("hbo_max", "HBO Max"), ("youtube_premium", "YouTube Premium"), ("chatgpt", "ChatGPT"), ("gemini", "Gemini")]
 
@@ -188,8 +208,9 @@ def parse_media(path, item_id, name):
         text = ansi.sub("", path.read_text(encoding="utf-8", errors="replace"))
     except OSError as exc:
         return {"id": item_id, "name": name, "status": "unknown", "detail": str(exc)}
-    ipv4 = text.split("IPv4", 1)[1] if "IPv4" in text else text
-    lines = [clean(line) for line in ipv4.split("IPv6", 1)[0].splitlines() if clean(line)]
+    selected = text.split(f"IPv{media_ip_version}", 1)[1] if f"IPv{media_ip_version}" in text else text
+    other_version = "6" if media_ip_version == "4" else "4"
+    lines = [clean(line) for line in selected.split(f"IPv{other_version}", 1)[0].splitlines() if clean(line)]
     line = next((line for line in lines if name.lower() in line.lower()), "")
     if not line and item_id == "gemini":
         line = next((line for line in lines if "Gemini" in line), "")
@@ -206,8 +227,13 @@ def parse_media(path, item_id, name):
         status = "unknown"
     result = {"id": item_id, "name": name, "status": status}
     region = re.search(r"region\s*:\s*([A-Za-z0-9_-]+)", line, re.I)
+    if not region and item_id == "gemini":
+        region = re.search(r"Gemini\s+Location\s*:\s*([A-Za-z0-9_-]+)", line, re.I)
     if region:
-        result["region"] = region.group(1).upper()
+        region_value = region.group(1).upper()
+        result["region"] = region_value
+        if item_id == "gemini" and region_value not in {"CN", "CHINA", "中国"}:
+            result["status"] = "yes"
     if line:
         result["detail"] = line[:160]
     return result
@@ -236,17 +262,21 @@ for result_file in sorted(network_dir.glob("*.tsv")):
     if loss is not None:
         item["loss"] = loss
     (cdns if category == "CDN" else sites).append(item)
-payload = {"version": 1, "node_type": node_type, "node_id": node_id, "checked_at": int(time.time()), "media": media, "network": {"sites": sites[:64], "cdns": cdns[:64]}}
+payload = {"version": 1, "node_type": node_type, "checked_at": int(time.time()), "media": media, "network": {"sites": sites[:64], "cdns": cdns[:64]}}
 payload_path.write_text(json.dumps(payload, ensure_ascii=False), encoding="utf-8")
 PY
 
-python3 - "$WORK_DIR/payload.json" "$API_TOKEN" <<'PY' | curl -fsS --retry 3 --connect-timeout 15 --max-time 60 -H 'Content-Type: application/json' --data-binary @- "$API_URL"
+for node_id in "${NODE_ID_LIST[@]}"; do
+    python3 - "$WORK_DIR/payload.json" "$API_TOKEN" "$NODE_TYPE" "$node_id" <<'PY' | curl -fsS --retry 3 --connect-timeout 15 --max-time 60 -H 'Content-Type: application/json' --data-binary @- "$API_URL"
 from pathlib import Path
 import json
 import sys
 payload = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
 payload["token"] = sys.argv[2]
+payload["node_type"] = sys.argv[3]
+payload["node_id"] = int(sys.argv[4])
 print(json.dumps(payload, ensure_ascii=False))
 PY
 
-echo "节点探测上报完成：${NODE_TYPE}/${NODE_ID}"
+    echo "节点探测上报完成：${NODE_TYPE}/${node_id}（流媒体 IPv${MEDIA_IP_VERSION}）"
+done
