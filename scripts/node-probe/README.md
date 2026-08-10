@@ -9,18 +9,21 @@
 
 ## 安装
 
-在包含本目录的 v2board 工作副本中，以 root 执行：
+在节点 VPS 上以 root 执行下面的一键命令，脚本会自动下载探测代理并进行文字交互：
 
 ```bash
-bash scripts/node-probe/install.sh \
-  --api-url https://panel.example.com/api/v1 \
-  --token '你的 server_token' \
-  --node-type vmess \
-  --node-id 1 \
-  --interval 60
+bash <(curl -fsSL https://raw.githubusercontent.com/PandoRunRun/v2board/master/scripts/node-probe/install.sh)
 ```
 
-`--api-url` 应填写节点端 API 根地址，也可以直接填写完整的 `/api/v1/server/probe/report` 地址。本项目节点端使用 `https://api.pandorun.run`，代理最终会请求 `https://api.pandorun.run/api/v1/server/probe/report`。最短间隔为 30 分钟；默认 60 分钟，保留 48 条记录后约有两天历史。
+交互默认使用 `https://api.pandorun.run`、`vless` 和 60 分钟间隔。节点 ID 推荐填写父节点 ID；填写子节点 ID 也会由后端自动归并到父节点。最短间隔为 30 分钟，保留 48 条记录后约有两天历史。
+
+也支持无交互参数模式：
+
+```bash
+bash <(curl -fsSL https://raw.githubusercontent.com/PandoRunRun/v2board/master/scripts/node-probe/install.sh) \
+  --api-url https://api.pandorun.run --token '你的 server_token' \
+  --node-type vless --node-id 6 --interval 60
+```
 
 安装脚本会创建 `/etc/v2board-node-probe.env`、`/usr/local/libexec/v2board-node-probe` 和 systemd 定时器。检查命令：
 
