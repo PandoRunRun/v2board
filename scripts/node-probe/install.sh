@@ -7,7 +7,7 @@ if [[ "${EUID:-$(id -u)}" -ne 0 ]]; then
 fi
 
 API_DEFAULT="https://api.pandorun.run"
-AGENT_URL="${V2BOARD_NODE_PROBE_AGENT_URL:-https://raw.githubusercontent.com/PandoRunRun/v2board/master/scripts/node-probe/probe-agent.sh}"
+AGENT_URL="${V2BOARD_NODE_PROBE_AGENT_URL:-https://github.com/PandoRunRun/v2board/raw/refs/heads/master/scripts/node-probe/probe-agent.sh}"
 API_URL=""
 API_TOKEN=""
 NODE_TYPE="vless"

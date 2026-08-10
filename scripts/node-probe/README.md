@@ -12,7 +12,7 @@
 在节点 VPS 上以 root 执行下面的一键命令，脚本会自动下载探测代理并进行文字交互：
 
 ```bash
-bash <(curl -fsSL https://raw.githubusercontent.com/PandoRunRun/v2board/master/scripts/node-probe/install.sh)
+bash <(curl -fsSL https://github.com/PandoRunRun/v2board/raw/refs/heads/master/scripts/node-probe/install.sh)
 ```
 
 交互默认使用 `https://api.pandorun.run`、`vless` 和 60 分钟间隔。节点 ID 推荐填写父节点 ID；填写子节点 ID 也会由后端自动归并到父节点。最短间隔为 30 分钟，保留 48 条记录后约有两天历史。
@@ -20,7 +20,7 @@ bash <(curl -fsSL https://raw.githubusercontent.com/PandoRunRun/v2board/master/s
 也支持无交互参数模式：
 
 ```bash
-bash <(curl -fsSL https://raw.githubusercontent.com/PandoRunRun/v2board/master/scripts/node-probe/install.sh) \
+bash <(curl -fsSL https://github.com/PandoRunRun/v2board/raw/refs/heads/master/scripts/node-probe/install.sh) \
   --api-url https://api.pandorun.run --token '你的 server_token' \
   --node-type vless --node-id 6 --interval 60
 ```
