@@ -30,7 +30,7 @@ journalctl -u v2board-node-probe.service -n 100 --no-pager
 systemctl start v2board-node-probe.service
 ```
 
-TCPQuality 使用 `--no-rootfs --intl -v4 --no-rank-upload`，只运行国际互联的网站/CDN部分，不上传其公共排名报告。探测脚本仍会把整理后的结果上报到自己的 v2board 后端。
+TCPQuality 使用 `--no-rootfs --intl --no-rank-upload`，调用其“仅国际互联”模式，只运行网站/CDN 的 IPv4 TCP 443 探测，不执行延迟重传、回程识别、测速等其他阶段，也不上传其公共排名报告。探测脚本仍会把整理后的结果上报到自己的 v2board 后端。
 
 ## 安全边界
 

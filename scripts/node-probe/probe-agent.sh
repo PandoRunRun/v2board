@@ -76,8 +76,9 @@ mkdir -p "$NETWORK_DIR"
 CSV_MARKER="$WORK_DIR/network-csv.marker"
 touch "$CSV_MARKER"
 echo "运行常用网站/CDN 国际互联探测。"
-if ! timeout "${NETWORK_TIMEOUT_SECONDS:-900}" bash "$WORK_DIR/tcp-quality.sh" --no-rootfs --intl -v4 --no-rank-upload >"$NETWORK_DIR/tcp-quality.log" 2>&1; then
+if ! timeout "${NETWORK_TIMEOUT_SECONDS:-900}" bash "$WORK_DIR/tcp-quality.sh" --no-rootfs --intl --no-rank-upload >"$NETWORK_DIR/tcp-quality.log" 2>&1; then
     echo "TCPQuality 探测失败，将只上报可用的流媒体结果。" >&2
+    tail -n 40 "$NETWORK_DIR/tcp-quality.log" >&2 || true
 fi
 
 NETWORK_CSV=""
