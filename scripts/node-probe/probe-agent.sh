@@ -165,7 +165,7 @@ else
     echo "未找到 nping 或 getent，跳过网站/CDN 探测。" >&2
 fi
 
-python3 "$MEDIA_DIR" "$NETWORK_DIR" "$WORK_DIR/payload.json" "$NODE_TYPE" "$NODE_ID" <<'PY'
+python3 - "$MEDIA_DIR" "$NETWORK_DIR" "$WORK_DIR/payload.json" "$NODE_TYPE" "$NODE_ID" <<'PY'
 import json
 import re
 import sys
