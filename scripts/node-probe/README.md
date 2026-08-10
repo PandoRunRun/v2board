@@ -3,7 +3,7 @@
 这个代理每次执行时从上游拉取最新的两个脚本：
 
 - [RegionRestrictionCheck](https://raw.githubusercontent.com/1-stream/RegionRestrictionCheck/main/check.sh)：IPv4 的 Netflix、Disney+、HBO Max、YouTube Premium、ChatGPT、Gemini。
-- [TcpQuality](https://raw.githubusercontent.com/ibsgss/TcpQuality/main/runTcpQuality.sh)：常用网站和国际 CDN 的 IPv4/TCP 443 连通性、丢包率和延迟。
+- TCPQuality 的国际网站/CDN 目标列表：代理内置目标，不在节点运行时下载或执行 TCPQuality。
 
 结果通过现有的 `server_token` 上报到 `POST /api/v1/server/probe/report`。后端从 `node_type + node_id` 对应的实际节点记录读取 `parent_id`，所以同一父节点的所有子节点共享一份状态历史。安装时填写父节点 ID 最直观；填写子节点 ID 也会自动归并。
 
@@ -30,7 +30,7 @@ journalctl -u v2board-node-probe.service -n 100 --no-pager
 systemctl start v2board-node-probe.service
 ```
 
-TCPQuality 使用 `--no-rootfs --intl --no-rank-upload`，调用其“仅国际互联”模式，只运行网站/CDN 的 IPv4 TCP 443 探测，不执行延迟重传、回程识别、测速等其他阶段，也不上传其公共排名报告。探测脚本仍会把整理后的结果上报到自己的 v2board 后端。
+网站/CDN 部分使用 `nping` 对内置目标执行 IPv4 TCP 443 SYN 探测，计算可达状态、平均延迟和丢包率；不会执行 TCPQuality 的延迟重传、回程识别或测速流程。流媒体/AI 部分仍然每次从 [RegionRestrictionCheck](https://raw.githubusercontent.com/1-stream/RegionRestrictionCheck/main/check.sh) 拉取最新脚本。
 
 ## 安全边界
 

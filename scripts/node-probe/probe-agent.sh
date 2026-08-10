@@ -27,10 +27,8 @@ fi
 WORK_DIR="$(mktemp -d "$STATE_DIR/run.XXXXXX")"
 trap 'rm -rf -- "$WORK_DIR"' EXIT
 MEDIA_URL="https://raw.githubusercontent.com/1-stream/RegionRestrictionCheck/main/check.sh"
-TCP_QUALITY_URL="https://raw.githubusercontent.com/ibsgss/TcpQuality/main/runTcpQuality.sh"
 curl -fsSL --retry 3 --connect-timeout 15 --max-time 60 "$MEDIA_URL" -o "$WORK_DIR/region-check.sh"
-curl -fsSL --retry 3 --connect-timeout 15 --max-time 60 "$TCP_QUALITY_URL" -o "$WORK_DIR/tcp-quality.sh"
-chmod 700 "$WORK_DIR/region-check.sh" "$WORK_DIR/tcp-quality.sh"
+chmod 700 "$WORK_DIR/region-check.sh"
 
 # 上游 -F 模式会同时调用 IPv4/IPv6；临时改写下载副本，只保留 IPv4 分支。
 python3 - "$WORK_DIR/region-check.sh" "$WORK_DIR/region-check-v4.sh" <<'PY'
@@ -73,22 +71,101 @@ run_media_test "gemini" "Gemini" "AIUnlockTest_Gemini_location"
 
 NETWORK_DIR="$WORK_DIR/network"
 mkdir -p "$NETWORK_DIR"
-CSV_MARKER="$WORK_DIR/network-csv.marker"
-touch "$CSV_MARKER"
-echo "运行常用网站/CDN 国际互联探测。"
-if ! timeout "${NETWORK_TIMEOUT_SECONDS:-900}" bash "$WORK_DIR/tcp-quality.sh" --no-rootfs --intl --no-rank-upload >"$NETWORK_DIR/tcp-quality.log" 2>&1; then
-    echo "TCPQuality 探测失败，将只上报可用的流媒体结果。" >&2
-    tail -n 40 "$NETWORK_DIR/tcp-quality.log" >&2 || true
+echo "运行常用网站/CDN IPv4 TCP 443 探测。"
+
+# 目标列表摘自 TCPQuality 的 INTERNATIONAL_SITE_TARGETS 和
+# INTERNATIONAL_CDN_TARGETS。列表固定在代理中，避免每次运行下载并执行
+# TCPQuality 的综合测速、回程识别和重传检测流程。
+NETWORK_TARGETS=(
+    '网站|Adobe Assets|assets.adobe.com'
+    '网站|Amazon|www.amazon.com'
+    '网站|Apple iCloud|www.icloud.com'
+    '网站|AWS STS|sts.amazonaws.com'
+    '网站|ChatGPT|chatgpt.com'
+    '网站|Claude|claude.ai'
+    '网站|Cloudflare Dashboard|dash.cloudflare.com'
+    '网站|Discord Gateway|gateway.discord.gg'
+    '网站|Dropbox API|api.dropboxapi.com'
+    '网站|Facebook|www.facebook.com'
+    '网站|GitHub API|api.github.com'
+    '网站|GitLab|gitlab.com'
+    '网站|Gmail|mail.google.com'
+    '网站|Google Search|www.google.com'
+    '网站|Google Static|www.gstatic.com'
+    '网站|Instagram|www.instagram.com'
+    '网站|Microsoft Login|login.microsoftonline.com'
+    '网站|Netflix API|api-global.netflix.com'
+    '网站|NodeSeek|www.nodeseek.com'
+    '网站|Notion API|api.notion.com'
+    '网站|OpenAI API|api.openai.com'
+    '网站|PayPal API|api-m.paypal.com'
+    '网站|Reddit OAuth|oauth.reddit.com'
+    '网站|Slack App|app.slack.com'
+    '网站|Spotify Web|open.spotify.com'
+    '网站|Steam|store.steampowered.com'
+    '网站|Telegram|telegram.org'
+    '网站|Wikipedia|www.wikipedia.org'
+    '网站|X|x.com'
+    '网站|YouTube API|youtubei.googleapis.com'
+    '网站|Zoom API|api.zoom.us'
+    'CDN|Akamai Edge|www.akamai.com'
+    'CDN|AWS Static|d1.awsstatic.com'
+    'CDN|CacheFly|cachefly.cachefly.net'
+    'CDN|CDN77 Demo|1906714720.rsc.cdn77.org'
+    'CDN|Cloudflare CDNJS|cdnjs.cloudflare.com'
+    'CDN|Fastly Demo|http-me.fastly.dev'
+    'CDN|Google Fonts Static|fonts.gstatic.com'
+    'CDN|Google Hosted Libraries|ajax.googleapis.com'
+    'CDN|jsDelivr|cdn.jsdelivr.net'
+    'CDN|Microsoft Ajax CDN|ajax.aspnetcdn.com'
+    'CDN|QUANTIL Edge|www.quantil.com'
+    'CDN|Tencent EdgeOne|edgeone.ai'
+    'CDN|UNPKG|unpkg.com'
+    'CDN|Vercel Edge|vercel.com'
+)
+
+run_network_probe() {
+    local category="$1" name="$2" domain="$3"
+    local prefix="site"
+    [[ "$category" == "CDN" ]] && prefix="cdn"
+    local result_file="$NETWORK_DIR/${prefix}-${domain//./_}.tsv"
+    local ip="" raw="" summary="" sent=5 received=0 latency="" loss="100.00"
+
+    ip="$(getent ahostsv4 "$domain" 2>/dev/null | awk 'NR == 1 {print $1}' || true)"
+    if [[ -n "$ip" ]]; then
+        raw="$(timeout 25 nping --tcp -p 443 --flags syn -c 5 --delay 100ms "$ip" 2>&1 || true)"
+        summary="$(printf '%s\n' "$raw" | grep -m1 'Raw packets sent:' || true)"
+        if [[ "$summary" =~ Raw[[:space:]]packets[[:space:]]sent:[[:space:]]([0-9]+).*Rcvd:[[:space:]]([0-9]+) ]]; then
+            sent="${BASH_REMATCH[1]}"
+            received="${BASH_REMATCH[2]}"
+        fi
+        latency="$(printf '%s\n' "$raw" | sed -n 's/.*Avg rtt: \([0-9.][0-9.]*\)ms.*/\1/p' | head -n 1)"
+        if [[ "$sent" =~ ^[0-9]+$ && "$received" =~ ^[0-9]+$ && "$sent" -gt 0 ]]; then
+            loss="$(awk -v sent="$sent" -v received="$received" 'BEGIN { printf "%.2f", (sent - received) * 100 / sent }')"
+        fi
+    fi
+    [[ "$received" -gt 0 ]] && status="ok" || status="fail"
+    printf '%s\t%s\t%s\t%s\t%s\t%s\n' "$category" "$name" "$domain" "$status" "$latency" "$loss" >"$result_file"
+}
+
+if command -v nping >/dev/null 2>&1 && command -v getent >/dev/null 2>&1; then
+    running=0
+    for target in "${NETWORK_TARGETS[@]}"; do
+        IFS='|' read -r category name domain <<<"$target"
+        run_network_probe "$category" "$name" "$domain" &
+        ((running += 1))
+        if (( running >= ${NETWORK_PARALLEL:-8} )); then
+            wait -n || true
+            ((running -= 1))
+        fi
+    done
+    wait || true
+    echo "常用网站/CDN 探测完成：${#NETWORK_TARGETS[@]} 个目标。"
+else
+    echo "未找到 nping 或 getent，跳过网站/CDN 探测。" >&2
 fi
 
-NETWORK_CSV=""
-while IFS= read -r candidate; do
-    NETWORK_CSV="$candidate"
-    break
-done < <(find /tmp -maxdepth 1 -type f -name 'zstatic_nping_*.csv' -newer "$CSV_MARKER" -print 2>/dev/null | sort -r)
-
-python3 - "$MEDIA_DIR" "$NETWORK_CSV" "$WORK_DIR/payload.json" "$NODE_TYPE" "$NODE_ID" <<'PY'
-import csv
+python3 "$MEDIA_DIR" "$NETWORK_DIR" "$WORK_DIR/payload.json" "$NODE_TYPE" "$NODE_ID" <<'PY'
 import json
 import re
 import sys
@@ -96,7 +173,7 @@ import time
 from pathlib import Path
 
 media_dir = Path(sys.argv[1])
-network_csv = sys.argv[2]
+network_dir = Path(sys.argv[2])
 payload_path = Path(sys.argv[3])
 node_type = sys.argv[4]
 node_id = int(sys.argv[5])
@@ -137,35 +214,28 @@ def parse_media(path, item_id, name):
 
 media = [parse_media(media_dir / f"{item_id}.txt", item_id, name) for item_id, name in media_specs]
 sites, cdns = [], []
-if network_csv:
+for result_file in sorted(network_dir.glob("*.tsv")):
     try:
-        with open(network_csv, "r", encoding="utf-8-sig", newline="") as stream:
-            for row in csv.DictReader(stream):
-                domain = clean(row.get("域名", ""))
-                name = clean(row.get("省份", "")) or domain
-                category = clean(row.get("运营商", ""))
-                if not domain or category not in {"网站", "CDN"}:
-                    continue
-                raw_status = clean(row.get("状态", "")).upper()
-                try:
-                    latency = int(round(float(clean(row.get("平均延迟ms", "")))))
-                    latency = max(0, latency) if latency >= 0 else None
-                except (TypeError, ValueError):
-                    latency = None
-                try:
-                    loss = round(max(0.0, min(100.0, float(clean(row.get("丢包率(%)", ""))))), 2)
-                except (TypeError, ValueError):
-                    loss = None
-                item = {
-                    "id": ("cdn-" if category == "CDN" else "site-") + re.sub(r"[^a-zA-Z0-9_.-]", "", domain),
-                    "name": name[:128], "domain": domain[:160],
-                    "status": "ok" if raw_status == "OK" else "fail", "latency_ms": latency,
-                }
-                if loss is not None:
-                    item["loss"] = loss
-                (cdns if category == "CDN" else sites).append(item)
-    except OSError:
-        pass
+        category, name, domain, raw_status, raw_latency, raw_loss = result_file.read_text(encoding="utf-8").strip().split("\t")
+    except (OSError, ValueError):
+        continue
+    try:
+        latency = int(round(float(raw_latency))) if raw_latency else None
+        latency = max(0, latency) if latency is not None else None
+    except ValueError:
+        latency = None
+    try:
+        loss = round(max(0.0, min(100.0, float(raw_loss))), 2)
+    except ValueError:
+        loss = None
+    item = {
+        "id": ("cdn-" if category == "CDN" else "site-") + re.sub(r"[^a-zA-Z0-9_.-]", "", domain),
+        "name": name[:128], "domain": domain[:160],
+        "status": raw_status, "latency_ms": latency,
+    }
+    if loss is not None:
+        item["loss"] = loss
+    (cdns if category == "CDN" else sites).append(item)
 payload = {"version": 1, "node_type": node_type, "node_id": node_id, "checked_at": int(time.time()), "media": media, "network": {"sites": sites[:64], "cdns": cdns[:64]}}
 payload_path.write_text(json.dumps(payload, ensure_ascii=False), encoding="utf-8")
 PY
@@ -179,7 +249,4 @@ payload["token"] = sys.argv[2]
 print(json.dumps(payload, ensure_ascii=False))
 PY
 
-if [[ -n "$NETWORK_CSV" && -f "$NETWORK_CSV" ]]; then
-    rm -f -- "$NETWORK_CSV"
-fi
 echo "节点探测上报完成：${NODE_TYPE}/${NODE_ID}"
